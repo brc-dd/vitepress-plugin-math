@@ -36,6 +36,9 @@
   /* own stacking context, so the z-index:-1 overlay stays right behind the
      formula instead of dropping under opaque ancestor backgrounds */
   isolation: isolate;
+  /* display wrappers scroll (overflow-x: auto), which clips the overlay to
+     the element's border box — round the element so the clip is rounded too */
+  border-radius: 4px;
 }
 
 /* An inline wrapper must become inline-block while marked: as `inline`, its
