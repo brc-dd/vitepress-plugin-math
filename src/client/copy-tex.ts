@@ -121,6 +121,14 @@ export interface DblclickSelectHandle {
   handleSelectionChange(): void
   /** Drops the mark when the pointer goes down outside the formula. */
   handlePointerDown(event: PointerEvent | MouseEvent): void
+  /**
+   * Touch long-press on a formula selects it (iOS's own long-press finds no
+   * text inside SVG output and grabs neighboring prose instead). Wire
+   * touchstart/touchmove/touchend/touchcancel.
+   */
+  handleTouchStart(event: TouchEvent): void
+  handleTouchMove(event: TouchEvent): void
+  handleTouchEnd(): void
   /** The currently marked formula, for the copy handler's fallback. */
   getMarked(): Element | null
   /** Removes any lingering mark (call on teardown). */
@@ -142,14 +150,40 @@ const MARK_GRACE_MS = 500
  * `vpm-selected` class — styled like a text selection by `core.css` — and
  * unmarked as soon as the selection moves elsewhere.
  */
+/** Touch long-press duration before a formula is selected. */
+const LONG_PRESS_MS = 400
+/** Finger travel (px) that cancels a pending long-press. */
+const LONG_PRESS_SLOP = 10
+
 export function createDblclickSelectHandler(options: CopyTexOptions = {}): DblclickSelectHandle {
   const roots = options.roots ?? DEFAULT_ROOTS
   let marked: Element | null = null
   let markedAt = 0
+  let pressTimer: ReturnType<typeof setTimeout> | null = null
+  let pressStart: { x: number; y: number } | null = null
 
   const clear = () => {
     marked?.classList.remove('vpm-selected')
     marked = null
+  }
+
+  const cancelPress = () => {
+    if (pressTimer !== null) clearTimeout(pressTimer)
+    pressTimer = null
+    pressStart = null
+  }
+
+  const select = (root: Element) => {
+    const selection = window.getSelection()
+    if (!selection) return
+    const range = document.createRange()
+    range.selectNode(root)
+    selection.removeAllRanges()
+    selection.addRange(range)
+    clear()
+    root.classList.add('vpm-selected')
+    marked = root
+    markedAt = Date.now()
   }
 
   return {
@@ -168,18 +202,35 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       // The browser's own select-word action runs AFTER event dispatch; over
       // SVG there is no text, so it would collapse a selection made here.
       // Apply ours after the native action settles.
-      setTimeout(() => {
-        const selection = window.getSelection()
-        if (!selection) return
-        const range = document.createRange()
-        range.selectNode(root)
-        selection.removeAllRanges()
-        selection.addRange(range)
-        clear()
-        root.classList.add('vpm-selected')
-        marked = root
-        markedAt = Date.now()
-      }, 0)
+      setTimeout(() => select(root), 0)
+    },
+    handleTouchStart(event) {
+      cancelPress()
+      if (event.touches.length !== 1) return
+      const touch = event.touches[0]!
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const root = rootOf(target, roots)
+      if (!root || texOf(root) === null) return
+      pressStart = { x: touch.clientX, y: touch.clientY }
+      pressTimer = setTimeout(() => {
+        pressTimer = null
+        select(root)
+      }, LONG_PRESS_MS)
+    },
+    handleTouchMove(event) {
+      if (!pressStart) return
+      const touch = event.touches[0]
+      if (
+        !touch ||
+        Math.abs(touch.clientX - pressStart.x) > LONG_PRESS_SLOP ||
+        Math.abs(touch.clientY - pressStart.y) > LONG_PRESS_SLOP
+      ) {
+        cancelPress()
+      }
+    },
+    handleTouchEnd() {
+      cancelPress()
     },
     handleSelectionChange() {
       if (!marked || Date.now() - markedAt < MARK_GRACE_MS) return

@@ -53,6 +53,10 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
       document.addEventListener('dblclick', select.handleDblclick)
       document.addEventListener('selectionchange', select.handleSelectionChange)
       document.addEventListener('pointerdown', select.handlePointerDown)
+      document.addEventListener('touchstart', select.handleTouchStart, { passive: true })
+      document.addEventListener('touchmove', select.handleTouchMove, { passive: true })
+      document.addEventListener('touchend', select.handleTouchEnd)
+      document.addEventListener('touchcancel', select.handleTouchEnd)
     }
     const marked = select
     copy = createCopyTexHandler({
@@ -68,6 +72,10 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
       document.removeEventListener('dblclick', select.handleDblclick)
       document.removeEventListener('selectionchange', select.handleSelectionChange)
       document.removeEventListener('pointerdown', select.handlePointerDown)
+      document.removeEventListener('touchstart', select.handleTouchStart)
+      document.removeEventListener('touchmove', select.handleTouchMove)
+      document.removeEventListener('touchend', select.handleTouchEnd)
+      document.removeEventListener('touchcancel', select.handleTouchEnd)
       select.clear()
     }
     copy = select = null

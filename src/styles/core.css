@@ -26,12 +26,33 @@
   vertical-align: middle;
 }
 
-/* Double-click selection hint: SVG-rendered math (MathJax) gets no native
-   ::selection paint, so the selected formula is marked explicitly. */
+/* Double-click / long-press selection hint: SVG-rendered math (MathJax)
+   gets no native ::selection paint, so the selected formula is marked
+   explicitly. An absolutely positioned overlay (not a background) so the
+   paint covers the full bounding box even on inline wrappers, whose
+   background would only cover the line-box strip of a tall expression. */
 .vpm-selected {
-  background-color: var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
+  position: relative;
+  /* own stacking context, so the z-index:-1 overlay stays right behind the
+     formula instead of dropping under opaque ancestor backgrounds */
+  isolation: isolate;
+}
+
+/* An inline wrapper must become inline-block while marked: as `inline`, its
+   box (and therefore the overlay) is only the line-box strut, not the full
+   height of a tall expression. Baselines are preserved. */
+.vpm-inline.vpm-selected {
+  display: inline-block;
+}
+
+.vpm-selected::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
   border-radius: 4px;
-  box-shadow: 0 0 0 3px var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
+  background-color: var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
+  pointer-events: none;
 }
 
 .vpm-error {
