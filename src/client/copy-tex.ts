@@ -157,23 +157,37 @@ const LONG_PRESS_SLOP = 10
 
 async function copyText(text: string): Promise<boolean> {
   try {
+    // Secure contexts only — on plain http (LAN dev servers) this throws
+    // and the fallback below runs.
     await navigator.clipboard.writeText(text)
     return true
   } catch {
-    // Legacy fallback (also covers clipboard-permission denials).
+    // execCommand fallback, tuned to not disturb iOS Safari: `select()`
+    // would focus the textarea with scrolling, popping the keyboard and
+    // collapsing/expanding the browser chrome (visible as a scroll jump).
+    // readonly suppresses the keyboard, preventScroll + restore keep the
+    // viewport still, and 16px dodges iOS input auto-zoom.
+    const x = window.scrollX
+    const y = window.scrollY
     const area = document.createElement('textarea')
     area.value = text
+    area.readOnly = true
     area.style.position = 'fixed'
+    area.style.top = '0'
+    area.style.left = '0'
     area.style.opacity = '0'
+    area.style.fontSize = '16px'
     document.body.append(area)
-    area.select()
     let ok = false
     try {
+      area.focus({ preventScroll: true })
+      area.setSelectionRange(0, area.value.length)
       ok = document.execCommand('copy')
     } catch {
       ok = false
     }
     area.remove()
+    if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y)
     return ok
   }
 }
