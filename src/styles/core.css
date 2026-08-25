@@ -57,6 +57,11 @@
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* VitePress's theme makes mjx-container itself scroll (overflow-x: auto),
+     creating a second, implicitly-focusable scroller inside our focusable
+     wrapper — arrow keys then only work after tabbing to the inner one.
+     Let the overflow propagate so the wrapper is the single scroller. */
+  overflow: visible;
 }
 
 /* Long-press copy chip (touch devices). */
