@@ -12,7 +12,8 @@ Things that must **stay literal**:
 
 Things that must **render**:
 
-- Literal dollar inside math: $\text{costs \$5, or $ alone}$
+- Escaped dollar inside math: $\text{costs \$5 today}$ (a lone `$` mid-expression
+  never falsely terminates it either — but a *literal* dollar in TeX is always `\$`)
 - CJK adjacency: 价格$p = mv$成立
 - Multi-line inline: $a +
   b$
@@ -22,7 +23,8 @@ Things that must **render**:
   > \sum_{n=1}^\infty \frac{1}{n^2} = \frac{\pi^2}{6}
   > $$
 - Image alt keeps math: ![$E=mc^2$ energy](/logo.svg)
-- Labels (enabled in this playground):
+- Labels (enabled in this playground) become anchors —
+  [jump to #pythagoras](#pythagoras):
   $$
   a^2 + b^2 = c^2
   $$ (pythagoras)

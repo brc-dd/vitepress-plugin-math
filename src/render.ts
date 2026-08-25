@@ -50,6 +50,8 @@ export function createWrapperRenderer(
     }
 
     const attrs: string[] = [`class="${classes}"`]
+    // A `$$…$$ (label)` label becomes a deep-linkable anchor.
+    if (ctx.label !== undefined) attrs.push(`id="${escapeHtml(ctx.label)}"`)
     if (vPre) attrs.push('v-pre')
     if (display) attrs.push('data-display="true"')
     if (display && !inline) attrs.push('tabindex="0"')

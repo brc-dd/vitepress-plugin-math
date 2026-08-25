@@ -17,7 +17,7 @@ single-line block with a label
 .
 $$x$$ (eq-1)
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#eq-1:x]</div>
+<div class="vpm vpm-display" id="eq-1" data-display="true" tabindex="0">[D#eq-1:x]</div>
 .
 
 multi-line block with a label
@@ -26,21 +26,21 @@ $$
 a=1
 $$ (eq-1)
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#eq-1:a=1]</div>
+<div class="vpm vpm-display" id="eq-1" data-display="true" tabindex="0">[D#eq-1:a=1]</div>
 .
 
 numeric label
 .
 $$1+1=2$$ (2)
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#2:1+1=2]</div>
+<div class="vpm vpm-display" id="2" data-display="true" tabindex="0">[D#2:1+1=2]</div>
 .
 
 label without a space
 .
 $$a+b$$(1)
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#1:a+b]</div>
+<div class="vpm vpm-display" id="1" data-display="true" tabindex="0">[D#1:a+b]</div>
 .
 
 label with whitespace is not a label
@@ -75,7 +75,7 @@ b = 2
 $$ (1)
 .
 <div class="vpm vpm-display" data-display="true" tabindex="0">[D:a = 1]</div>
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#1:b = 2]</div>
+<div class="vpm vpm-display" id="1" data-display="true" tabindex="0">[D#1:b = 2]</div>
 .
 
 labelled block in a blockquote
@@ -88,7 +88,7 @@ labelled block in a blockquote
 .
 <blockquote>
 <p>formula</p>
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#2: a+b=c]</div>
+<div class="vpm vpm-display" id="2" data-display="true" tabindex="0">[D#2: a+b=c]</div>
 <p>in blockquote.</p>
 </blockquote>
 .
@@ -102,7 +102,7 @@ $$ (abc)
 
 - ab $c=1$ d
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#abc:a=1 \\
+<div class="vpm vpm-display" id="abc" data-display="true" tabindex="0">[D#abc:a=1 \\
 b=2]</div>
 <ul>
 <li>ab <span class="vpm vpm-inline">[I:c=1]</span> d</li>
@@ -118,7 +118,7 @@ $$a+b$$(1)
 .
 <pre><code>code
 </code></pre>
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#1:a+b]</div>
+<div class="vpm vpm-display" id="1" data-display="true" tabindex="0">[D#1:a+b]</div>
 .
 
 mid-paragraph display math takes no label
@@ -146,7 +146,7 @@ label with trailing spaces
 .
 $$x$$ (eq-1)   
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D#eq-1:x]</div>
+<div class="vpm vpm-display" id="eq-1" data-display="true" tabindex="0">[D#eq-1:x]</div>
 .
 
 an escaped closing marker cannot carry a label
