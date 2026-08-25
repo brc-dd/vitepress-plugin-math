@@ -49,6 +49,7 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
   onMounted(() => {
     if (options.selectOnDblclick !== false) {
       select = createDblclickSelectHandler(options)
+      document.addEventListener('mousedown', select.handleMouseDown)
       document.addEventListener('dblclick', select.handleDblclick)
       document.addEventListener('selectionchange', select.handleSelectionChange)
       document.addEventListener('pointerdown', select.handlePointerDown)
@@ -63,6 +64,7 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
   onUnmounted(() => {
     if (copy) document.removeEventListener('copy', copy)
     if (select) {
+      document.removeEventListener('mousedown', select.handleMouseDown)
       document.removeEventListener('dblclick', select.handleDblclick)
       document.removeEventListener('selectionchange', select.handleSelectionChange)
       document.removeEventListener('pointerdown', select.handlePointerDown)

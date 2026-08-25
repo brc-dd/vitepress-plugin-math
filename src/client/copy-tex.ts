@@ -110,6 +110,13 @@ function hasMath(fragment: DocumentFragment, roots: readonly string[]): boolean 
 
 export interface DblclickSelectHandle {
   handleDblclick(event: MouseEvent): void
+  /**
+   * Suppresses the browser's select-word gesture over math (`detail >= 2`),
+   * so no transient native selection flashes before ours applies. Attach to
+   * `mousedown` (not `pointerdown`, whose preventDefault would cancel the
+   * compatibility mouse events and with them the dblclick itself).
+   */
+  handleMouseDown(event: MouseEvent): void
   /** Drops the `vpm-selected` mark once the selection leaves the formula. */
   handleSelectionChange(): void
   /** Drops the mark when the pointer goes down outside the formula. */
@@ -146,6 +153,13 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
   }
 
   return {
+    handleMouseDown(event) {
+      if (event.detail < 2) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const root = rootOf(target, roots)
+      if (root && texOf(root) !== null) event.preventDefault()
+    },
     handleDblclick(event) {
       const target = event.target
       if (!(target instanceof Element)) return
