@@ -1,14 +1,10 @@
+/// <reference path="../engines/engine-shims.d.ts" />
 import { onContentUpdated } from 'vitepress'
 import { onMounted, onUnmounted } from 'vue'
 import type { CopyTexOptions } from './copy-tex.ts'
 import { createCopyTexHandler } from './copy-tex.ts'
 
-export {
-  createCopyTexHandler,
-  isDisplayMath,
-  replaceMathWithTex,
-  texOf,
-} from './copy-tex.ts'
+export { createCopyTexHandler, isDisplayMath, replaceMathWithTex, texOf } from './copy-tex.ts'
 export type { CopyTexDelimiters, CopyTexOptions } from './copy-tex.ts'
 
 /**

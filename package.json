@@ -18,7 +18,10 @@
   ],
   "license": "MIT",
   "author": "Divyansh Singh <brc-dd@hotmail.com> (https://github.com/brc-dd)",
-  "repository": "github:brc-dd/vitepress-plugin-math",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brc-dd/vitepress-plugin-math.git"
+  },
   "funding": "https://github.com/sponsors/brc-dd",
   "files": [
     "dist"
@@ -31,6 +34,9 @@
     ".": "./src/index.ts",
     "./client": "./src/client/index.ts",
     "./engines/*": "./src/engines/*.ts",
+    "./env": {
+      "types": "./src/env.d.ts"
+    },
     "./vite": "./src/vite/index.ts",
     "./styles/*": "./src/styles/*",
     "./fonts/*": "./src/fonts/*",
@@ -42,6 +48,9 @@
       ".": "./dist/index.js",
       "./client": "./dist/client/index.js",
       "./engines/*": "./dist/engines/*.js",
+      "./env": {
+        "types": "./dist/env.d.ts"
+      },
       "./vite": "./dist/vite/index.js",
       "./styles/*": "./dist/styles/*",
       "./fonts/*": "./dist/fonts/*",
@@ -62,7 +71,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc -p .",
+    "typecheck": "tsc -p . && vue-tsc --noEmit -p examples/docs",
     "format": "prettier --experimental-cli --write .",
     "format:check": "prettier --experimental-cli --check .",
     "docs:dev": "pnpm -C examples/docs dev",
@@ -87,7 +96,8 @@
     "vite": "^8.2.1",
     "vitepress": "2.0.0-alpha.19",
     "vitest": "5.0.0-rc.2",
-    "vue": "^3.5.41"
+    "vue": "^3.5.41",
+    "vue-tsc": "^3.3.11"
   },
   "peerDependencies": {
     "@webc.site/math": ">=0.1.30 <0.2.0",

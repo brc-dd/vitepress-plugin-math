@@ -17,17 +17,14 @@ interface VitePluginLike {
   [hook: string]: unknown
 }
 
-/** Minimal structural slice of a VitePress user config that we touch. */
-export interface VitePressConfigLike {
+/** Internal mutable view of the slice of a VitePress user config we touch. */
+interface VitePressConfigLike {
   markdown?: {
-    config?: (md: never) => unknown
-    [key: string]: unknown
+    config?: (md: unknown) => unknown
   }
   vite?: {
     plugins?: unknown[]
-    [key: string]: unknown
   }
-  [key: string]: unknown
 }
 
 function mathJaxFontDir(): string | null {
@@ -98,12 +95,24 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
       })
     },
 
-    async generateBundle() {
+    async generateBundle(_options: unknown, bundle: Record<string, unknown>) {
+      // KaTeX's stylesheet lists woff/ttf fallbacks after each woff2 source.
+      // No supported browser fetches them, but Vite still emits ~800 KB of
+      // font files per deploy — strip the fallback sources from the CSS and
+      // drop the orphaned assets.
+      for (const [key, file] of Object.entries(bundle)) {
+        const asset = file as { type?: string; fileName?: string; source?: unknown }
+        if (asset.type !== 'asset' || !asset.fileName) continue
+        if (/KaTeX_[^/]+\.(?:woff|ttf)$/.test(asset.fileName)) {
+          delete bundle[key]
+        }
+      }
+
       if (!needsFonts) return
       const dir = fontDir ?? mathJaxFontDir()
       if (!dir) return
       const { readdir, readFile } = await import('node:fs/promises')
-      const self = this as {
+      const self = this as unknown as {
         emitFile(file: { type: 'asset'; fileName: string; source: Uint8Array }): void
       }
       for (const name of await readdir(dir)) {
@@ -113,6 +122,31 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
           fileName: `${FONT_URL.slice(1)}/${name}`,
           source: await readFile(`${dir}/${name}`),
         })
+      }
+    },
+
+    async writeBundle(options: { dir?: string }) {
+      // VitePress emits its final concatenated stylesheet from a post-ordered
+      // plugin after our generateBundle ran, so the dangling references to
+      // the dropped fallbacks are cleaned on disk.
+      const outDir = options.dir
+      if (!outDir) return
+      const { readdir, readFile, writeFile } = await import('node:fs/promises')
+      let names: string[] = []
+      try {
+        names = await readdir(outDir, { recursive: true })
+      } catch {
+        return
+      }
+      for (const name of names) {
+        if (!name.endsWith('.css')) continue
+        const path = `${outDir}/${name}`
+        const text = await readFile(path, 'utf8')
+        const stripped = text.replace(
+          /,\s*url\([^)]*KaTeX_[^)]*\.(?:woff|ttf)\)\s*format\((["'])(?:woff|truetype)\1\)/g,
+          '',
+        )
+        if (stripped !== text) await writeFile(path, stripped)
       }
     },
   } satisfies VitePluginLike
@@ -135,23 +169,21 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
  * `vitepress-plugin-math/styles/katex.css`, `…/styles/temml.css`, or
  * `virtual:vitepress-plugin-math.css` for MathJax.
  */
-export function withMath<T extends VitePressConfigLike>(
-  config: T,
-  options: ApplyMathOptions = {},
-): T {
+export function withMath<T extends object>(config: T, options: ApplyMathOptions = {}): T {
   // Eager: both the markdown hook and the Vite css loader await this, and
   // the theme (which imports the virtual css) may load before any markdown
   // is rendered.
   const renderer = resolveRenderer(options)
 
-  const markdown = (config.markdown ??= {})
-  const userConfig = markdown.config as ((md: unknown) => unknown) | undefined
+  const cfg = config as VitePressConfigLike
+  const markdown = (cfg.markdown ??= {})
+  const userConfig = markdown.config
   markdown.config = async (md: unknown) => {
     mathPlugin(md as MathMarkdownIt, { ...options, renderer: await renderer })
     await userConfig?.(md)
   }
 
-  const vite = (config.vite ??= {})
+  const vite = (cfg.vite ??= {})
   ;(vite.plugins ??= []).push(mathStylesPlugin(renderer))
 
   return config

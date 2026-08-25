@@ -12,5 +12,6 @@ export default defineConfig({
   copy: [
     { from: 'src/styles', to: 'dist/styles' },
     { from: 'src/fonts', to: 'dist/fonts' },
+    { from: 'src/env.d.ts', to: 'dist/env.d.ts' },
   ],
 })

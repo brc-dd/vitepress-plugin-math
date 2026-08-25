@@ -1,3 +1,4 @@
+/// <reference path="./engine-shims.d.ts" />
 import type { KatexOptions } from 'katex'
 import type { MathRenderer } from '../types.ts'
 import { loadEngine } from './shared.ts'

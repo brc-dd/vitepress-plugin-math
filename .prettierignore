@@ -1,4 +1,9 @@
 dist
 coverage
 pnpm-lock.yaml
-CHANGELOG.md
+
+# markdown is excluded wholesale: test/fixtures/*.md are exact parser
+# input/output pairs (the `name . input . expected .` format is
+# whitespace-exact), and the example docs are math-heavy content where
+# prettier's markdown escaping can change TeX semantics
+*.md

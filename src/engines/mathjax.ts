@@ -1,3 +1,4 @@
+/// <reference path="./engine-shims.d.ts" />
 import type { MathRenderer } from '../types.ts'
 import { loadEngine } from './shared.ts'
 
@@ -74,10 +75,7 @@ export interface MathJaxRendererOptions {
   mathjax?: Record<string, unknown>
 }
 
-function mergeBlock(
-  base: Record<string, unknown>,
-  user: unknown,
-): Record<string, unknown> {
+function mergeBlock(base: Record<string, unknown>, user: unknown): Record<string, unknown> {
   return typeof user === 'object' && user !== null
     ? { ...base, ...(user as Record<string, unknown>) }
     : base
@@ -96,6 +94,7 @@ export async function createMathJaxRenderer(
   const user = options.mathjax ?? {}
 
   let texPackages = [...(options.texPackages ?? DEFAULT_TEX_PACKAGES)]
+  let mhchemSkipped = false
   // mhchem's CHTML/SVG glyphs live in a separate font-extension package.
   // When it isn't installed, drop mhchem from the defaults (with a hint)
   // instead of failing the whole MathJax startup; an explicit `texPackages`
@@ -106,6 +105,7 @@ export async function createMathJaxRenderer(
       createRequire(import.meta.url).resolve('@mathjax/mathjax-mhchem-font-extension')
     } catch {
       texPackages = texPackages.filter((name) => name !== 'mhchem')
+      mhchemSkipped = true
       console.warn(
         '[vitepress-plugin-math] mhchem support skipped — install ' +
           '`@mathjax/mathjax-mhchem-font-extension` to enable `\\ce`/`\\pu` with MathJax.',
@@ -126,9 +126,15 @@ export async function createMathJaxRenderer(
   const config: Record<string, unknown> = {
     loader: mergeBlock({ load }, user['loader']),
     tex: mergeBlock(
-      // `[-] require` drops the \require macro: page content must not load
-      // arbitrary extensions at build time (and it's async under liteDOM).
-      { packages: { '[+]': texPackages, '[-]': ['require'] }, tags: 'ams' },
+      {
+        // `[-] require` drops the \require macro: page content must not load
+        // arbitrary extensions at build time (and it's async under liteDOM).
+        packages: { '[+]': texPackages, '[-]': ['require'] },
+        tags: 'ams',
+        // A skipped mhchem must not autoload either — a lazy component load
+        // during a sync render throws the async-retry error.
+        ...(mhchemSkipped ? { autoload: { mhchem: [] } } : {}),
+      },
       user['tex'],
     ),
     options: mergeBlock(assistiveMml ? { enableAssistiveMml: true } : {}, user['options']),

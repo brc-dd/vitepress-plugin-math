@@ -8,3 +8,7 @@ dist
 # test outputs — `__snapshots__` is committed on purpose and stays tracked
 coverage
 .vitest
+
+# downloaded font originals + opt-in `--subset` output (see scripts/fonts.py);
+# the emitted fonts in `src/fonts` are committed on purpose and stay tracked
+scripts/.cache/

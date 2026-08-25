@@ -33,10 +33,7 @@ function matchCloser(line: string, marker: string, allowLabel: boolean): Closer 
   return { prefix: text.slice(0, at), label }
 }
 
-function createBlockRule(
-  tokenMarkup: '$$' | '\\[',
-  options: BlockRuleOptions,
-): MathBlockRule {
+function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): MathBlockRule {
   const opener = tokenMarkup
   const closer = tokenMarkup === '$$' ? '$$' : '\\]'
   const openFirst = tokenMarkup === '$$' ? DOLLAR : BACKSLASH
