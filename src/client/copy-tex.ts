@@ -183,11 +183,13 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
   const delimiters = options.delimiters ?? DEFAULT_DELIMITERS
   let marked: Element | null = null
   let markedAt = 0
-  /** Whether the mark came with a DOM selection (desktop dblclick path). */
+  /** Whether the mark came with a DOM selection (mouse dblclick path). */
   let markedWithSelection = false
   let chip: HTMLButtonElement | null = null
   let pressTimer: ReturnType<typeof setTimeout> | null = null
   let pressStart: { x: number; y: number } | null = null
+  /** Pointer type of the most recent pointerdown — routes dblclick. */
+  let lastPointerType = 'mouse'
 
   const clear = () => {
     marked?.classList.remove('vpm-selected')
@@ -258,6 +260,13 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
       if (!root || texOf(root) === null) return
+      // Touch double-taps take the chip path: a DOM selection would summon
+      // the OS selection UI, and the next tap would collapse it (reading as
+      // dismissal). Mouse keeps the selection + Cmd+C flow.
+      if (lastPointerType === 'touch') {
+        markWithChip(root)
+        return
+      }
       // The browser's own select-word action runs AFTER event dispatch; over
       // SVG there is no text, so it would collapse a selection made here.
       // Apply ours after the native action settles.
@@ -308,6 +317,7 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       }
     },
     handlePointerDown(event) {
+      lastPointerType = (event as PointerEvent).pointerType || 'mouse'
       if (!marked) return
       const target = event.target
       if (!(target instanceof Node)) return
