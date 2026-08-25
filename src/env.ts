@@ -3,3 +3,5 @@
 // `/// <reference types="vitepress-plugin-math/env" />`).
 
 declare module 'virtual:vitepress-plugin-math.css' {}
+
+export {}

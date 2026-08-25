@@ -34,9 +34,7 @@
     ".": "./src/index.ts",
     "./client": "./src/client/index.ts",
     "./engines/*": "./src/engines/*.ts",
-    "./env": {
-      "types": "./src/env.d.ts"
-    },
+    "./env": "./src/env.ts",
     "./vite": "./src/vite/index.ts",
     "./styles/*": "./src/styles/*",
     "./fonts/*": "./src/fonts/*",
@@ -48,9 +46,7 @@
       ".": "./dist/index.js",
       "./client": "./dist/client/index.js",
       "./engines/*": "./dist/engines/*.js",
-      "./env": {
-        "types": "./dist/env.d.ts"
-      },
+      "./env": "./dist/env.js",
       "./vite": "./dist/vite/index.js",
       "./styles/*": "./dist/styles/*",
       "./fonts/*": "./dist/fonts/*",
