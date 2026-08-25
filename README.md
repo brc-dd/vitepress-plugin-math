@@ -130,8 +130,10 @@ useTemmlRefs() // Temml only: resolves \ref/\eqref equation numbers
 ```
 
 `useCopyTex` works with every engine (it reads the wrapper's `data-tex`, falling back to
-MathML annotations and MathJax's `data-latex`) — ~1 KB, one delegated listener, no
-re-initialization on navigation.
+MathML annotations and MathJax's `data-latex`) — ~1 KB, delegated listeners, no
+re-initialization on navigation. Double-clicking a formula selects it whole (with a
+visible highlight — SVG output gets no native selection paint) so a plain copy grabs its
+TeX; disable via `useCopyTex({ selectOnDblclick: false })`.
 
 ## Choosing an engine
 

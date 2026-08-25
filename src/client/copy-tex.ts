@@ -30,6 +30,13 @@ export interface CopyTexOptions {
   container?: () => ParentNode | null
   /** Pad display math with newlines so it keeps its block boundaries. */
   blockNewlines?: boolean
+  /**
+   * A formula to copy when there is no usable selection — the dblclick
+   * handler's marked element. SVG output holds no selectable text, so the
+   * browser may collapse the selection after a double-click; the mark keeps
+   * copy working regardless.
+   */
+  fallbackRoot?: () => Element | null
 }
 
 const TEX_ANNOTATION = 'annotation[encoding="application/x-tex"]'
@@ -105,9 +112,21 @@ export interface DblclickSelectHandle {
   handleDblclick(event: MouseEvent): void
   /** Drops the `vpm-selected` mark once the selection leaves the formula. */
   handleSelectionChange(): void
+  /** Drops the mark when the pointer goes down outside the formula. */
+  handlePointerDown(event: PointerEvent | MouseEvent): void
+  /** The currently marked formula, for the copy handler's fallback. */
+  getMarked(): Element | null
   /** Removes any lingering mark (call on teardown). */
   clear(): void
 }
+
+/**
+ * Chromium may fire native selection updates (collapsing the selection over
+ * text-free SVG) shortly after dblclick — selection-based clearing is
+ * ignored inside this window; explicit dismissal (pointerdown outside) is
+ * not.
+ */
+const MARK_GRACE_MS = 500
 
 /**
  * Double-click selects the whole formula under the pointer, so a plain copy
@@ -119,6 +138,7 @@ export interface DblclickSelectHandle {
 export function createDblclickSelectHandler(options: CopyTexOptions = {}): DblclickSelectHandle {
   const roots = options.roots ?? DEFAULT_ROOTS
   let marked: Element | null = null
+  let markedAt = 0
 
   const clear = () => {
     marked?.classList.remove('vpm-selected')
@@ -131,28 +151,42 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
       if (!root || texOf(root) === null) return
-      const selection = window.getSelection()
-      if (!selection) return
-      const range = document.createRange()
-      range.selectNode(root)
-      selection.removeAllRanges()
-      selection.addRange(range)
-      clear()
-      root.classList.add('vpm-selected')
-      marked = root
+      // The browser's own select-word action runs AFTER event dispatch; over
+      // SVG there is no text, so it would collapse a selection made here.
+      // Apply ours after the native action settles.
+      setTimeout(() => {
+        const selection = window.getSelection()
+        if (!selection) return
+        const range = document.createRange()
+        range.selectNode(root)
+        selection.removeAllRanges()
+        selection.addRange(range)
+        clear()
+        root.classList.add('vpm-selected')
+        marked = root
+        markedAt = Date.now()
+      }, 0)
     },
     handleSelectionChange() {
-      if (!marked) return
+      if (!marked || Date.now() - markedAt < MARK_GRACE_MS) return
       const selection = window.getSelection()
+      // Range.intersectsNode, not Selection.containsNode — the latter
+      // reports false in Chromium even for the exact selectNode() range.
       if (
         !selection ||
         selection.isCollapsed ||
         selection.rangeCount === 0 ||
-        !selection.containsNode(marked, true)
+        !selection.getRangeAt(0).intersectsNode(marked)
       ) {
         clear()
       }
     },
+    handlePointerDown(event) {
+      if (!marked) return
+      const target = event.target
+      if (!(target instanceof Node) || !marked.contains(target)) clear()
+    },
+    getMarked: () => marked,
     clear,
   }
 }
@@ -165,9 +199,23 @@ export function createCopyTexHandler(
   options: CopyTexOptions = {},
 ): (event: ClipboardEvent) => void {
   const roots = options.roots ?? DEFAULT_ROOTS
+  const delimiters = options.delimiters ?? DEFAULT_DELIMITERS
   return (event) => {
+    if (!event.clipboardData) return
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !event.clipboardData) return
+    if (!selection || selection.isCollapsed) {
+      // No usable selection but a formula is marked (dblclick over SVG
+      // output, where the browser may have collapsed the selection) — copy
+      // the marked formula directly.
+      const fallback = options.fallbackRoot?.()
+      const tex = fallback ? texOf(fallback) : null
+      if (!fallback || tex === null) return
+      const [open, close] = isDisplayMath(fallback) ? delimiters.display : delimiters.inline
+      event.clipboardData.setData('text/html', fallback.outerHTML)
+      event.clipboardData.setData('text/plain', open + tex + close)
+      event.preventDefault()
+      return
+    }
     if (options.container) {
       const container = options.container()
       if (!container || !container.contains(selection.anchorNode)) return

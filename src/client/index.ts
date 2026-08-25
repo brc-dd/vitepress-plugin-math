@@ -47,19 +47,25 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
   let copy: ((event: ClipboardEvent) => void) | null = null
   let select: ReturnType<typeof createDblclickSelectHandler> | null = null
   onMounted(() => {
-    copy = createCopyTexHandler(options)
-    document.addEventListener('copy', copy)
     if (options.selectOnDblclick !== false) {
       select = createDblclickSelectHandler(options)
       document.addEventListener('dblclick', select.handleDblclick)
       document.addEventListener('selectionchange', select.handleSelectionChange)
+      document.addEventListener('pointerdown', select.handlePointerDown)
     }
+    const marked = select
+    copy = createCopyTexHandler({
+      ...options,
+      ...(marked ? { fallbackRoot: () => marked.getMarked() } : {}),
+    })
+    document.addEventListener('copy', copy)
   })
   onUnmounted(() => {
     if (copy) document.removeEventListener('copy', copy)
     if (select) {
       document.removeEventListener('dblclick', select.handleDblclick)
       document.removeEventListener('selectionchange', select.handleSelectionChange)
+      document.removeEventListener('pointerdown', select.handlePointerDown)
       select.clear()
     }
     copy = select = null
