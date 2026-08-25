@@ -15,6 +15,15 @@
   -webkit-user-select: none;
 }
 
+/* The visual layer is aria-hidden glyph soup — natively selecting it (iOS
+   long-press especially) yields garbage and fights the copy affordances.
+   Prose-spanning selections still copy the formula as TeX. */
+.vpm .katex .katex-html {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Keep display math scrolling inside our wrapper instead of overflowing. */
 .vpm-display .katex-display {
   margin: 0;

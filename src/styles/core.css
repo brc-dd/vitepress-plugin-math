@@ -45,6 +45,36 @@
   display: inline-block;
 }
 
+/* iOS Safari treats the SVG output as an image: long-press runs Live Text
+   (OCR) selection on it, doubling our own affordance. There is no real text
+   inside — suppress native selection and the image callout. Copying stays
+   available through the long-press chip and prose-spanning selections
+   (Range APIs ignore user-select). */
+.vpm mjx-container {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Long-press copy chip (touch devices). */
+.vpm-copy-chip {
+  position: absolute;
+  z-index: 40;
+  transform: translate(-50%, -100%);
+  margin-top: -6px;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  background-color: var(--vp-c-brand-1, #3451b2);
+  color: var(--vp-c-white, #fff);
+  font-family: var(--vp-font-family-base, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
 .vpm-selected::after {
   content: '';
   position: absolute;

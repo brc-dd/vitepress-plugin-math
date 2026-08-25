@@ -155,22 +155,59 @@ const LONG_PRESS_MS = 400
 /** Finger travel (px) that cancels a pending long-press. */
 const LONG_PRESS_SLOP = 10
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // Legacy fallback (also covers clipboard-permission denials).
+    const area = document.createElement('textarea')
+    area.value = text
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.append(area)
+    area.select()
+    let ok = false
+    try {
+      ok = document.execCommand('copy')
+    } catch {
+      ok = false
+    }
+    area.remove()
+    return ok
+  }
+}
+
 export function createDblclickSelectHandler(options: CopyTexOptions = {}): DblclickSelectHandle {
   const roots = options.roots ?? DEFAULT_ROOTS
+  const delimiters = options.delimiters ?? DEFAULT_DELIMITERS
   let marked: Element | null = null
   let markedAt = 0
+  /** Whether the mark came with a DOM selection (desktop dblclick path). */
+  let markedWithSelection = false
+  let chip: HTMLButtonElement | null = null
   let pressTimer: ReturnType<typeof setTimeout> | null = null
   let pressStart: { x: number; y: number } | null = null
 
   const clear = () => {
     marked?.classList.remove('vpm-selected')
     marked = null
+    chip?.remove()
+    chip = null
   }
 
   const cancelPress = () => {
     if (pressTimer !== null) clearTimeout(pressTimer)
     pressTimer = null
     pressStart = null
+  }
+
+  const mark = (root: Element, withSelection: boolean) => {
+    clear()
+    root.classList.add('vpm-selected')
+    marked = root
+    markedAt = Date.now()
+    markedWithSelection = withSelection
   }
 
   const select = (root: Element) => {
@@ -180,10 +217,32 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
     range.selectNode(root)
     selection.removeAllRanges()
     selection.addRange(range)
-    clear()
-    root.classList.add('vpm-selected')
-    marked = root
-    markedAt = Date.now()
+    mark(root, true)
+  }
+
+  // Touch path: no DOM selection at all — that would summon the OS's own
+  // selection UI on top of ours. A tap on the chip is a user gesture, so
+  // the Clipboard API works directly.
+  const markWithChip = (root: Element) => {
+    mark(root, false)
+    const rect = root.getBoundingClientRect()
+    chip = document.createElement('button')
+    chip.type = 'button'
+    chip.className = 'vpm-copy-chip'
+    chip.textContent = 'Copy TeX'
+    chip.style.left = `${rect.left + window.scrollX + rect.width / 2}px`
+    chip.style.top = `${rect.top + window.scrollY}px`
+    chip.addEventListener('click', () => {
+      const tex = texOf(root)
+      if (tex === null || !chip) return
+      const [open, close] = isDisplayMath(root) ? delimiters.display : delimiters.inline
+      const el = chip
+      void copyText(open + tex + close).then((ok) => {
+        el.textContent = ok ? 'Copied!' : 'Copy failed'
+        setTimeout(clear, 900)
+      })
+    })
+    document.body.append(chip)
   }
 
   return {
@@ -215,7 +274,7 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       pressStart = { x: touch.clientX, y: touch.clientY }
       pressTimer = setTimeout(() => {
         pressTimer = null
-        select(root)
+        markWithChip(root)
       }, LONG_PRESS_MS)
     },
     handleTouchMove(event) {
@@ -233,7 +292,9 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       cancelPress()
     },
     handleSelectionChange() {
-      if (!marked || Date.now() - markedAt < MARK_GRACE_MS) return
+      // Chip-marked formulas (touch) have no backing selection — only
+      // explicit dismissal removes them.
+      if (!marked || !markedWithSelection || Date.now() - markedAt < MARK_GRACE_MS) return
       const selection = window.getSelection()
       // Range.intersectsNode, not Selection.containsNode — the latter
       // reports false in Chromium even for the exact selectNode() range.
@@ -249,7 +310,9 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
     handlePointerDown(event) {
       if (!marked) return
       const target = event.target
-      if (!(target instanceof Node) || !marked.contains(target)) clear()
+      if (!(target instanceof Node)) return
+      if (marked.contains(target) || (chip && chip.contains(target))) return
+      clear()
     },
     getMarked: () => marked,
     clear,
