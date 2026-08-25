@@ -30,7 +30,20 @@ function matchCloser(line: string, marker: string, allowLabel: boolean): Closer 
   if (!text.endsWith(marker)) return null
   const at = text.length - marker.length
   if (isEscaped(text, at)) return null
-  return { prefix: text.slice(0, at), label }
+  // The closer must be the FIRST unescaped marker on the line — an earlier
+  // one means multiple pairs (`$$A$$ $$B$$`), which belong to the paragraph
+  // where the inline display rule renders each pair.
+  let first = -1
+  let from = 0
+  while ((first = text.indexOf(marker, from)) !== -1) {
+    if (isEscaped(text, first)) {
+      from = first + 1
+      continue
+    }
+    break
+  }
+  if (first !== at) return null
+  return { prefix: text.slice(0, at).replace(/[ \t]+$/, ''), label }
 }
 
 function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): MathBlockRule {
@@ -51,6 +64,9 @@ function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): 
     if (opener === '\\[' && isEscaped(src, pos)) return false
 
     const firstRest = src.slice(pos + 2, max)
+    // Continuation lines dedent relative to the OPENING line (like fences),
+    // not the surrounding block indent.
+    const indent = state.sCount[startLine]!
 
     // Single-line form: `$$content$$` with nothing after the closer.
     let contentParts: string[] | null = null
@@ -75,7 +91,7 @@ function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): 
         if (lpos >= state.eMarks[line]!) return false // blank line
         if (state.sCount[line]! < state.blkIndent) return false // dedent
         if (state.sCount[line]! - state.blkIndent >= 4) continue
-        const text = state.getLines(line, line + 1, state.blkIndent, false)
+        const text = state.getLines(line, line + 1, indent, false)
         found = matchCloser(text, closer, allowLabel)
         if (found) break
       }
@@ -84,7 +100,7 @@ function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): 
       contentParts = []
       if (firstRest !== '') contentParts.push(firstRest)
       if (line > startLine + 1) {
-        contentParts.push(state.getLines(startLine + 1, line, state.blkIndent, false))
+        contentParts.push(state.getLines(startLine + 1, line, indent, false))
       }
       if (found.prefix !== '') contentParts.push(found.prefix)
       label = found.label

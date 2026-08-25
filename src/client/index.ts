@@ -2,10 +2,27 @@
 import { onContentUpdated } from 'vitepress'
 import { onMounted, onUnmounted } from 'vue'
 import type { CopyTexOptions } from './copy-tex.ts'
-import { createCopyTexHandler } from './copy-tex.ts'
+import { createCopyTexHandler, createDblclickSelectHandler } from './copy-tex.ts'
 
-export { createCopyTexHandler, isDisplayMath, replaceMathWithTex, texOf } from './copy-tex.ts'
+export {
+  createCopyTexHandler,
+  createDblclickSelectHandler,
+  isDisplayMath,
+  replaceMathWithTex,
+  texOf,
+} from './copy-tex.ts'
 export type { CopyTexDelimiters, CopyTexOptions } from './copy-tex.ts'
+
+export interface UseCopyTexOptions extends CopyTexOptions {
+  /**
+   * Double-clicking a formula selects the whole formula, so a plain copy
+   * grabs its TeX. Without this, engines whose rendered output has no
+   * selectable text (MathJax SVG) cannot be copied on their own — only as
+   * part of a larger selection.
+   * @default true
+   */
+  selectOnDblclick?: boolean
+}
 
 /**
  * Copy-as-TeX for rendered math: selections containing formulas put the
@@ -26,15 +43,26 @@ export type { CopyTexDelimiters, CopyTexOptions } from './copy-tex.ts'
  * <template><DefaultTheme.Layout /></template>
  * ```
  */
-export function useCopyTex(options: CopyTexOptions = {}): void {
-  let handler: ((event: ClipboardEvent) => void) | null = null
+export function useCopyTex(options: UseCopyTexOptions = {}): void {
+  let copy: ((event: ClipboardEvent) => void) | null = null
+  let select: ReturnType<typeof createDblclickSelectHandler> | null = null
   onMounted(() => {
-    handler = createCopyTexHandler(options)
-    document.addEventListener('copy', handler)
+    copy = createCopyTexHandler(options)
+    document.addEventListener('copy', copy)
+    if (options.selectOnDblclick !== false) {
+      select = createDblclickSelectHandler(options)
+      document.addEventListener('dblclick', select.handleDblclick)
+      document.addEventListener('selectionchange', select.handleSelectionChange)
+    }
   })
   onUnmounted(() => {
-    if (handler) document.removeEventListener('copy', handler)
-    handler = null
+    if (copy) document.removeEventListener('copy', copy)
+    if (select) {
+      document.removeEventListener('dblclick', select.handleDblclick)
+      document.removeEventListener('selectionchange', select.handleSelectionChange)
+      select.clear()
+    }
+    copy = select = null
   })
 }
 

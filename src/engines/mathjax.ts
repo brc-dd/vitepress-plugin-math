@@ -140,13 +140,22 @@ export async function createMathJaxRenderer(
     options: mergeBlock(assistiveMml ? { enableAssistiveMml: true } : {}, user['options']),
     startup: mergeBlock({ typeset: false }, user['startup']),
   }
+  // v4 enables in-line linebreaking by default, which splits inline
+  // expressions into separately positioned segments — under liteDOM SSR the
+  // inter-segment spacing collapses (`a≠ 0`). Disable it for static output.
+  const linebreaks = { inline: false }
   if (output === 'chtml') {
     config['chtml'] = mergeBlock(
-      { fontURL: options.fontURL ?? MATHJAX_FONT_URL, adaptiveCSS: false },
+      { fontURL: options.fontURL ?? MATHJAX_FONT_URL, adaptiveCSS: false, linebreaks },
       user['chtml'],
     )
   } else {
-    config['svg'] = mergeBlock({ fontCache: 'local' }, user['svg'])
+    // `localID` pins the glyph-id namespace ordinarily derived from a
+    // process-global counter, so identical input yields byte-identical SVG
+    // across pages and rebuilds. With `fontCache: 'local'` every expression
+    // carries its own `<defs>`, so the shared namespace stays correct
+    // (duplicate ids reference identical path data).
+    config['svg'] = mergeBlock({ fontCache: 'local', linebreaks, localID: 'vpm' }, user['svg'])
   }
 
   const { init } = await loadEngine('mathjax', 'mathjax', () => import('mathjax'))
@@ -185,7 +194,12 @@ export async function createMathJaxRenderer(
           : MathJax.tex2chtml(tex, { display: ctx.display })
       return adaptor.outerHTML(node)
     },
-    reset: () => MathJax.texReset(),
+    reset: () => {
+      MathJax.texReset()
+      // Also reset the SVG glyph-id counter so identical input renders
+      // byte-identical output across pages and rebuilds.
+      MathJax.startup.output.clearFontCache?.()
+    },
     stylesheet: () =>
       adaptor.cssText(output === 'svg' ? MathJax.svgStylesheet() : MathJax.chtmlStylesheet()),
     finalize: () => MathJax.done?.(),

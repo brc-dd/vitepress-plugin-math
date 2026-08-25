@@ -135,7 +135,22 @@ spaces inside the markers
 .
 $$ 1+1 = 2 $$
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D: 1+1 = 2 ]</div>
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D: 1+1 = 2]</div>
+.
+
+empty multi-line block
+.
+$$
+$$
+.
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D:]</div>
+.
+
+empty single-line block
+.
+$$$$
+.
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D:]</div>
 .
 
 tab after the closing marker

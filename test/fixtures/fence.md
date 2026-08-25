@@ -2,7 +2,7 @@
 Test cases adapted (inputs only) from, and credited to:
   - mdit-plugins/plugin-tex, __tests__/tex.spec.ts
     (MIT (c) 2022-present Mr.Hope)
-  - microsoft/vscode-markdown-it-katex, test/fixtures/default.txt
+  - microsoft/vscode-markdown-it-katex, test/fixtures/fence.txt
     (MIT (c) Microsoft Corporation)
 
 Expected output is THIS plugin's (it deliberately differs from every upstream

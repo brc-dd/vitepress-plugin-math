@@ -93,7 +93,7 @@ spaces inside bracket markers
 .
 \[ a = 1 \]
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1 ]</div>
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1]</div>
 .
 
 unclosed inline bracket
@@ -270,7 +270,7 @@ bracket math inside an image alt
 .
 ![\(a\) alt](x.png)
 .
-<p><img src="x.png" alt="$a$ alt"></p>
+<p><img src="x.png" alt="\(a\) alt"></p>
 .
 
 multiline inline brackets

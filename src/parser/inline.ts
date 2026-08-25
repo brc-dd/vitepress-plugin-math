@@ -59,6 +59,11 @@ export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRu
   }
 
   return (state, silent) => {
+    // Inline silent mode means we are inside parseLinkLabel's probe, where
+    // posMax is still the whole line — a forward closer scan here could
+    // swallow the label's `]`. Decline; the label content is re-tokenized
+    // afterwards (with posMax narrowed), where the real scan runs.
+    if (silent) return false
     const { src, posMax } = state
     const start = state.pos
     if (src.charCodeAt(start) !== DOLLAR) return false
@@ -139,6 +144,8 @@ export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRu
  */
 export function createBracketInlineRule(): MathInlineRule {
   return (state, silent) => {
+    // See the dollar rule: never scan forward during link-label probing.
+    if (silent) return false
     const { src, posMax } = state
     const start = state.pos
     if (src.charCodeAt(start) !== BACKSLASH || start + 1 >= posMax) return false

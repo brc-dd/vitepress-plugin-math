@@ -330,34 +330,29 @@ describe('image alt text', () => {
   })
 })
 
-/**
- * Cases where the parser looks genuinely wrong (reported, not fixed here).
- * `it.fails` asserts the behaviour we *want*: these pass while the bug is
- * present and start failing the moment it is fixed.
- */
-describe('known deviations (expected to fail until fixed)', () => {
-  it.fails('dedents block content relative to the opening marker', () => {
+describe('fixed deviations (dedent, multi-pair lines, link labels)', () => {
+  it('dedents block content relative to the opening marker', () => {
     expect(blockContent('   $$\n   1+1 = 2\n   $$')).toBe('1+1 = 2')
   })
 
-  it.fails('keeps the closing line indentation out of the content', () => {
+  it('keeps the closing line indentation out of the content', () => {
     expect(blockContent('$$\na=1\n   $$')).toBe('a=1')
   })
 
-  it.fails('treats two `$$` pairs on one line as inline display math', () => {
+  it('treats two `$$` pairs on one line as inline display math', () => {
     expect(md.render('$$A$$ $$B$$').trim()).toBe(
       '<p><span class="vpm vpm-display vpm-display-inline" data-display="true">[ID:A]</span> ' +
         '<span class="vpm vpm-display vpm-display-inline" data-display="true">[ID:B]</span></p>',
     )
   })
 
-  it.fails('does not let an inline `$` closer cross a link label', () => {
+  it('does not let an inline `$` closer cross a link label', () => {
     expect(md.render('[x $a](u)$b$').trim()).toBe(
       '<p><a href="u">x $a</a><span class="vpm vpm-inline">[I:b]</span></p>',
     )
   })
 
-  it.fails('does not let an inline `$$` closer cross a link label', () => {
+  it('does not let an inline `$$` closer cross a link label', () => {
     expect(md.render('[a $$b](u) $$c$$').trim()).toBe(
       '<p><a href="u">a $$b</a> ' +
         '<span class="vpm vpm-display vpm-display-inline" data-display="true">[ID:c]</span></p>',

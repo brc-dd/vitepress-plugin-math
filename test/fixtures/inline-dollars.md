@@ -205,6 +205,13 @@ $ x$
 $x $</p>
 .
 
+unicode space before the closer
+.
+a $x $ b
+.
+<p>a $x $ b</p>
+.
+
 after a code span
 .
 `code`$a-b$

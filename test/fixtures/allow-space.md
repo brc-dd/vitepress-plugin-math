@@ -109,7 +109,7 @@ spaced block markers
 .
 $$ a = 1 $$
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1 ]</div>
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1]</div>
 .
 
 spaced block content
@@ -132,7 +132,7 @@ spaced bracket block
 .
 \[ a = 1 \]
 .
-<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1 ]</div>
+<div class="vpm vpm-display" data-display="true" tabindex="0">[D: a = 1]</div>
 .
 
 spaced dollars in a link label

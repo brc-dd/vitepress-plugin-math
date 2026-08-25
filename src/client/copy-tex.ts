@@ -101,6 +101,62 @@ function hasMath(fragment: DocumentFragment, roots: readonly string[]): boolean 
   return false
 }
 
+export interface DblclickSelectHandle {
+  handleDblclick(event: MouseEvent): void
+  /** Drops the `vpm-selected` mark once the selection leaves the formula. */
+  handleSelectionChange(): void
+  /** Removes any lingering mark (call on teardown). */
+  clear(): void
+}
+
+/**
+ * Double-click selects the whole formula under the pointer, so a plain copy
+ * grabs its TeX. Because SVG-rendered math (MathJax) gets no native
+ * `::selection` paint, the selected wrapper is additionally marked with a
+ * `vpm-selected` class — styled like a text selection by `core.css` — and
+ * unmarked as soon as the selection moves elsewhere.
+ */
+export function createDblclickSelectHandler(options: CopyTexOptions = {}): DblclickSelectHandle {
+  const roots = options.roots ?? DEFAULT_ROOTS
+  let marked: Element | null = null
+
+  const clear = () => {
+    marked?.classList.remove('vpm-selected')
+    marked = null
+  }
+
+  return {
+    handleDblclick(event) {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const root = rootOf(target, roots)
+      if (!root || texOf(root) === null) return
+      const selection = window.getSelection()
+      if (!selection) return
+      const range = document.createRange()
+      range.selectNode(root)
+      selection.removeAllRanges()
+      selection.addRange(range)
+      clear()
+      root.classList.add('vpm-selected')
+      marked = root
+    },
+    handleSelectionChange() {
+      if (!marked) return
+      const selection = window.getSelection()
+      if (
+        !selection ||
+        selection.isCollapsed ||
+        selection.rangeCount === 0 ||
+        !selection.containsNode(marked, true)
+      ) {
+        clear()
+      }
+    },
+    clear,
+  }
+}
+
 /**
  * Creates the `copy` event handler. Attach it to `document` once — it is
  * delegated, so it survives SPA navigation without re-initialization.

@@ -7,12 +7,15 @@ const BLOCK_ALT = ['paragraph', 'reference', 'blockquote', 'list']
 
 function asTextToken(token: MathToken): MathToken {
   // `renderInlineAsText` (image alt text) only understands a few token
-  // types — represent math as its delimited source instead of dropping it.
+  // types — represent math as its delimited source instead of dropping it,
+  // re-using the delimiters the author wrote (token.markup).
   if (token.type === 'math_inline') {
-    return { ...token, type: 'text', content: `$${token.content}$` }
+    const [open, close] = token.markup === '\\(' ? ['\\(', '\\)'] : ['$', '$']
+    return { ...token, type: 'text', content: `${open}${token.content}${close}` }
   }
   if (token.type === 'math_inline_display') {
-    return { ...token, type: 'text', content: `$$${token.content}$$` }
+    const [open, close] = token.markup === '\\[' ? ['\\[', '\\]'] : ['$$', '$$']
+    return { ...token, type: 'text', content: `${open}${token.content}${close}` }
   }
   return token
 }

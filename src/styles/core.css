@@ -26,6 +26,14 @@
   vertical-align: middle;
 }
 
+/* Double-click selection hint: SVG-rendered math (MathJax) gets no native
+   ::selection paint, so the selected formula is marked explicitly. */
+.vpm-selected {
+  background-color: var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
+}
+
 .vpm-error {
   color: var(--vp-c-danger-1, #b8272c);
   font-family: var(--vp-font-family-mono, ui-monospace, monospace);

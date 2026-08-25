@@ -1,11 +1,12 @@
+import MarkdownIt from 'markdown-it'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createKatexRenderer } from '../src/engines/katex.ts'
 import { createMathJaxRenderer } from '../src/engines/mathjax.ts'
 import { EngineMissingError, loadEngine } from '../src/engines/shared.ts'
 import { createTemmlRenderer } from '../src/engines/temml.ts'
 import { createWebcMathRenderer } from '../src/engines/webc.ts'
-import { ENGINE_PRIORITY, resolveRenderer } from '../src/index.ts'
-import type { MathRenderContext, MathRenderer } from '../src/types.ts'
+import { applyMath, ENGINE_PRIORITY, resolveRenderer } from '../src/index.ts'
+import type { MathMarkdownIt, MathRenderContext, MathRenderer } from '../src/types.ts'
 import { createMd } from './helpers.ts'
 
 const inline: MathRenderContext = { display: false, inline: false, env: undefined }
@@ -115,6 +116,26 @@ describe('resolveRenderer', () => {
     await expect(resolve()).rejects.toThrow('mathjax exploded')
   })
 
+  it('is what `applyMath` installs, in one call', async () => {
+    const md = new MarkdownIt()
+    const renderer = await applyMath(md as unknown as MathMarkdownIt, {
+      engine: 'temml',
+      vPre: false,
+      copySource: false,
+    })
+    expect(renderer.name).toBe('temml')
+    expect(md.render('$x$')).toContain('<math')
+  })
+
+  it('lets `applyMath` take a custom renderer', async () => {
+    const custom: MathRenderer = { name: 'custom', render: (tex) => `[${tex}]` }
+    const md = new MarkdownIt()
+    await expect(applyMath(md as unknown as MathMarkdownIt, { engine: custom })).resolves.toBe(
+      custom,
+    )
+    expect(md.render('$x$')).toContain('[x]')
+  })
+
   it('explains how to fix it when no engine is installed', async () => {
     vi.resetModules()
     for (const [file, factory] of [
@@ -164,6 +185,11 @@ describe('katex', () => {
 
   it('loads mhchem', () => {
     expect(renderer.render('\\ce{H2O}', inline)).not.toContain('#cc0000')
+  })
+
+  it('can skip the mhchem import', async () => {
+    const noMhchem = await createKatexRenderer({ mhchem: false })
+    expect(noMhchem.render('x^2', inline)).toContain('class="katex"')
   })
 
   it('forwards katex options', async () => {

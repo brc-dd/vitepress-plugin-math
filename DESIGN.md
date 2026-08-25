@@ -383,8 +383,12 @@ ERR_MODULE_NOT_FOUND-for-the-engine to an install hint.
   `tex2mml` returns a string. `tex2svg` needs `output/svg`.
 - Per-page CSS: `MathJax.startup.output.clearCache()` before each page, then
   `adaptor.cssText(MathJax.chtmlStylesheet())` — verified deterministic.
-  Alternative `chtml: { adaptiveCSS: false }` → fixed ~220 KB CSS, emit once
-  globally (simpler; gzips well). SVG: fixed 5.9 KB `svgStylesheet()`.
+  Alternative `chtml: { adaptiveCSS: false }` → fixed static CSS, emit once
+  globally — but measured ~1.6 MB raw after `loadDynamicFiles()` (the ~220 KB
+  figure is pre-preload). SVG: fixed ~6.5 KB `svgStylesheet()`.
+  **Implementation decision: `output: 'svg'` is our MathJax default** (zero
+  webfonts, tiny fixed CSS, deterministic); CHTML stays available with the
+  full static stylesheet + vite-served fonts, documented as heavy.
 - Per-page state: `MathJax.texReset()` (AMS numbering persists otherwise);
   `MathJax.done()` at build end if a11y components loaded (worker threads).
 - **SVG mode** (`svg: { fontCache: 'local' }`) = zero webfonts, 5.9 KB fixed
