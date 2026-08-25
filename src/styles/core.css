@@ -1,0 +1,33 @@
+/**
+ * Engine-independent styles for the plugin's own wrappers. Aligned with the
+ * VitePress default theme via its CSS variables (with sane fallbacks), and
+ * deliberately unlayered so it wins over the theme's `@layer` styles.
+ */
+
+.vpm-display {
+  margin: 16px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+/* Block display math is focusable (tabindex) so keyboard users can scroll
+   overflowing equations — mirror the theme's focus treatment. */
+.vpm-display:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1, #3451b2);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Display math appearing mid-paragraph (`a $$x$$ b`) — inline-legal box. */
+.vpm-display-inline {
+  display: inline-block;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.vpm-error {
+  color: var(--vp-c-danger-1, #b8272c);
+  font-family: var(--vp-font-family-mono, ui-monospace, monospace);
+  font-size: 0.875em;
+}

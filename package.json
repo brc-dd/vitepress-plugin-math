@@ -1,0 +1,120 @@
+{
+  "name": "vitepress-plugin-math",
+  "version": "0.1.0",
+  "description": "Engine-agnostic math for VitePress — one robust markdown-it TeX parser, swappable typesetting engines (MathJax v4, KaTeX, Temml, …), self-hosted styles and fonts.",
+  "keywords": [
+    "documentation",
+    "katex",
+    "latex",
+    "markdown-it",
+    "markdown-it-plugin",
+    "math",
+    "mathjax",
+    "mathml",
+    "temml",
+    "tex",
+    "vitepress",
+    "vitepress-plugin"
+  ],
+  "license": "MIT",
+  "author": "Divyansh Singh <brc-dd@hotmail.com> (https://github.com/brc-dd)",
+  "repository": "github:brc-dd/vitepress-plugin-math",
+  "funding": "https://github.com/sponsors/brc-dd",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./engines/*": "./src/engines/*.ts",
+    "./vite": "./src/vite/index.ts",
+    "./styles/*": "./src/styles/*",
+    "./fonts/*": "./src/fonts/*",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./client": "./dist/client/index.js",
+      "./engines/*": "./dist/engines/*.js",
+      "./vite": "./dist/vite/index.js",
+      "./styles/*": "./dist/styles/*",
+      "./fonts/*": "./dist/fonts/*",
+      "./package.json": "./package.json"
+    }
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.7.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.0.0-rc.10",
+      "onFail": "download"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p .",
+    "format": "prettier --experimental-cli --write .",
+    "format:check": "prettier --experimental-cli --check .",
+    "docs:dev": "pnpm -C examples/docs dev",
+    "docs:build": "pnpm -C examples/docs build",
+    "test": "vitest",
+    "test:unit": "vitest run"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.5",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "5.0.0-rc.2",
+    "@webc.site/math": "^0.1.34",
+    "katex": "^0.18.4",
+    "markdown-it": "^14.3.0",
+    "mathjax": "^4.1.3",
+    "prettier": "^3.9.6",
+    "publint": "^0.3.24",
+    "temml": "^0.13.4",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.1",
+    "vitepress": "2.0.0-alpha.19",
+    "vitest": "5.0.0-rc.2",
+    "vue": "^3.5.41"
+  },
+  "peerDependencies": {
+    "@webc.site/math": ">=0.1.30 <0.2.0",
+    "katex": ">=0.18.2 <0.19.0",
+    "mathjax": "^4.1.0",
+    "temml": "^0.13.0",
+    "vitepress": "^2.0.0-alpha.1",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@webc.site/math": {
+      "optional": true
+    },
+    "katex": {
+      "optional": true
+    },
+    "mathjax": {
+      "optional": true
+    },
+    "temml": {
+      "optional": true
+    },
+    "vitepress": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  }
+}

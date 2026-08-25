@@ -1,0 +1,10 @@
+node_modules
+dist
+*.log
+.DS_Store
+**/.vitepress/cache
+**/.vitepress/dist
+
+# test outputs — `__snapshots__` is committed on purpose and stays tracked
+coverage
+.vitest

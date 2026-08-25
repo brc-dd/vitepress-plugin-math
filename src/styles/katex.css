@@ -1,0 +1,21 @@
+/**
+ * Style entry for the KaTeX engine: upstream stylesheet (Vite resolves the
+ * font URLs from the katex package — self-hosted, no CDN) + our fixes.
+ */
+
+@import 'katex/dist/katex.min.css';
+@import './core.css';
+
+/* KaTeX hides its MathML layer with the clip hack but without user-select,
+   so selections copy the formula twice (visual layer + MathML). MathJax
+   already does this for its assistive MathML. The copy-as-TeX handler is
+   unaffected — cloneContents() ignores user-select. */
+.katex .katex-mathml {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Keep display math scrolling inside our wrapper instead of overflowing. */
+.vpm-display .katex-display {
+  margin: 0;
+}
