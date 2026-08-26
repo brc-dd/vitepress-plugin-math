@@ -2,7 +2,12 @@ import MarkdownIt from 'markdown-it'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createKatexRenderer } from '../src/engines/katex.ts'
 import { createMathJaxRenderer } from '../src/engines/mathjax.ts'
-import { EngineMissingError, loadEngine } from '../src/engines/shared.ts'
+import {
+  EngineMissingError,
+  EngineSetupError,
+  failedEngineRenderer,
+  loadEngine,
+} from '../src/engines/shared.ts'
 import { createTemmlRenderer } from '../src/engines/temml.ts'
 import { createWebcMathRenderer } from '../src/engines/webc.ts'
 import { applyMath, ENGINE_PRIORITY, resolveRenderer } from '../src/index.ts'
@@ -68,6 +73,31 @@ describe('EngineMissingError', () => {
       '[vitepress-plugin-math] The "webc" engine needs the `@webc.site/math` package. ' +
         'Install it (e.g. `pnpm add -D @webc.site/math`) or configure a different engine.',
     )
+  })
+})
+
+describe('failedEngineRenderer', () => {
+  it('rethrows the resolution failure at render time', () => {
+    const cause = new Error('nope')
+    const renderer = failedEngineRenderer(cause)
+    expect(renderer.name).toBe('unresolved')
+    expect(() => renderer.render('x', inline)).toThrow(EngineSetupError)
+    expect(() => renderer.render('x', inline)).toThrow('nope')
+  })
+
+  it('keeps the original failure as the cause', () => {
+    const cause = new EngineMissingError('katex', 'katex')
+    try {
+      failedEngineRenderer(cause).render('x', display)
+      expect.unreachable()
+    } catch (error) {
+      expect((error as EngineSetupError).cause).toBe(cause)
+      expect((error as Error).message).toBe(cause.message)
+    }
+  })
+
+  it('stringifies a non-Error failure', () => {
+    expect(() => failedEngineRenderer([4, '\\ce']).render('x', inline)).toThrow('4,\\ce')
   })
 })
 

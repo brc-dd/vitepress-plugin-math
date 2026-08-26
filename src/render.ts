@@ -1,3 +1,4 @@
+import { EngineSetupError } from './engines/shared.ts'
 import type {
   MathEnv,
   MathMarkdownIt,
@@ -44,6 +45,12 @@ export function createWrapperRenderer(
       const source = transformTex ? transformTex(tex, ctx) : tex
       body = renderer.render(source, ctx)
     } catch (thrown) {
+      // A missing or broken engine is a site-level configuration failure, not
+      // a bad expression, so it never becomes a placeholder: VitePress turns
+      // the throw into a dev error overlay (the server survives) and fails the
+      // build, whereas a silent page of placeholders would let a build with no
+      // engine at all succeed.
+      if (thrown instanceof EngineSetupError) throw thrown
       if (throwOnError) throw thrown
       error = thrown
       classes += ' vpm-error'

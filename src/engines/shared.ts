@@ -1,3 +1,5 @@
+import type { MathRenderer } from '../types.ts'
+
 /** Thrown when an optional engine peer dependency is not installed. */
 export class EngineMissingError extends Error {
   override name = 'EngineMissingError'
@@ -38,5 +40,36 @@ export async function loadEngine<T>(
   } catch (error) {
     if (isModuleNotFound(error, specifier)) throw new EngineMissingError(engine, specifier)
     throw error
+  }
+}
+
+/**
+ * Wraps an engine setup/resolution failure so render error handling can tell
+ * it apart from a per-expression render error and rethrow it.
+ */
+export class EngineSetupError extends Error {
+  override name = 'EngineSetupError'
+  override cause: unknown
+
+  constructor(cause: unknown) {
+    // The cause's own message, so overlays and build logs read the real
+    // reason ("Unknown engine …", the install hint) without unwrapping.
+    super(String(cause instanceof Error ? cause.message : cause))
+    this.cause = cause
+  }
+}
+
+/**
+ * Stand-in renderer for an engine that failed to resolve: the markdown-it
+ * rules still register (so a config reload cannot die on the failure), and
+ * every expression rethrows it at render time, where VitePress reports it as
+ * a dev error overlay or a failed build.
+ */
+export function failedEngineRenderer(failure: unknown): MathRenderer {
+  return {
+    name: 'unresolved',
+    render: () => {
+      throw new EngineSetupError(failure)
+    },
   }
 }

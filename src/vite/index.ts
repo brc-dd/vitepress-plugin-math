@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { failedEngineRenderer } from '../engines/shared.ts'
 import type { ApplyMathOptions } from '../index.ts'
 import { mathPlugin, resolveRenderer } from '../index.ts'
 import type { MathMarkdownIt, MathRenderer } from '../types.ts'
@@ -55,14 +56,18 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
   return {
     name: 'vitepress-plugin-math:styles',
 
-    async config() {
+    config() {
       // `useTemmlRefs()` imports temml's UMD post-processor at runtime, which
       // Vite would otherwise discover mid-session and answer with an
       // optimize-and-reload. Pre-bundling it at server start keeps the page put.
+      // Gated on temml merely being installed, not on it being the active
+      // engine: a theme may call `useTemmlRefs()` under any engine, and an
+      // engine-independent list also stays stable when the engine changes
+      // (Vite re-optimizes when `optimizeDeps` does).
       try {
-        if ((await renderer).name !== 'temml') return undefined
+        createRequire(import.meta.url).resolve('temml/package.json')
       } catch {
-        return undefined // resolution errors surface at the markdown/css await points
+        return undefined
       }
       return { optimizeDeps: { include: ['temml/dist/temmlPostProcess.js'] } }
     },
@@ -74,7 +79,15 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
 
     async load(id: string) {
       if (id !== RESOLVED_STYLES_ID) return undefined
-      const resolved = await renderer
+      let resolved: MathRenderer
+      try {
+        resolved = await renderer
+      } catch {
+        // The render-time throw is the single loud signal for an engine that
+        // failed to resolve; failing this module would take down the whole
+        // page instead of just its math.
+        return ''
+      }
       const css = resolved.stylesheet?.() ?? ''
       needsFonts = css.includes(FONT_URL)
       if (needsFonts) fontDir = mathJaxFontDir()
@@ -180,6 +193,10 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
  * Style wiring stays explicit (one import in `.vitepress/theme/index.ts`):
  * `vitepress-plugin-math/styles/katex.css`, `…/styles/temml.css`, or
  * `virtual:vitepress-plugin-math.css` for MathJax.
+ *
+ * An engine that fails to resolve (package not installed, unknown name) does
+ * not break config loading: the failure is rethrown the first time a page
+ * renders math, so dev shows an error overlay and `vitepress build` fails.
  */
 export function withMath<T extends object>(config: T, options: ApplyMathOptions = {}): T {
   // Eager: both the markdown hook and the Vite css loader await this, and
@@ -187,16 +204,31 @@ export function withMath<T extends object>(config: T, options: ApplyMathOptions 
   // is rendered.
   const renderer = resolveRenderer(options)
   // Nothing awaits this until markdown setup or the css load hook runs, so mark
-  // a rejection handled here: the failure then surfaces at those await points,
-  // which VitePress reports without the process dying on an unhandled
-  // rejection. Every later `await renderer` still sees it.
+  // a rejection handled here — an unhandled one in that window ends the
+  // process. Both awaiters handle it themselves; every later `await renderer`
+  // still sees it.
   renderer.catch(() => {})
 
   const cfg = config as VitePressConfigLike
   const markdown = (cfg.markdown ??= {})
   const userConfig = markdown.config
   markdown.config = async (md: unknown) => {
-    mathPlugin(md as MathMarkdownIt, { ...options, renderer: await renderer })
+    // A resolution failure must not escape this hook: VitePress runs it while
+    // constructing the dev server, including on a config-reload restart, where
+    // a throw takes the process down. The parsing rules register either way,
+    // and the failure is rethrown per expression at render time — a dev error
+    // overlay with the server alive, a hard failure during `vitepress build`.
+    let resolved: MathRenderer | undefined
+    let failure: unknown
+    try {
+      resolved = await renderer
+    } catch (error) {
+      failure = error
+    }
+    mathPlugin(md as MathMarkdownIt, {
+      ...options,
+      renderer: resolved ?? failedEngineRenderer(failure),
+    })
     await userConfig?.(md)
   }
 

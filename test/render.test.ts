@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import { describe, expect, it, vi } from 'vitest'
+import { EngineSetupError } from '../src/engines/shared.ts'
 import { mathPlugin } from '../src/plugin.ts'
 import type { MathMarkdownIt, MathRenderContext, MathRenderer } from '../src/types.ts'
 import { createMd, createProbeRenderer, probeMarker } from './helpers.ts'
@@ -169,6 +170,16 @@ describe('error handling', () => {
     const thrown = [4, '\\ce']
     const md = createMd({ renderer: throwingRenderer(thrown), throwOnError: true })
     expect(() => md.render('$x$')).toThrow(thrown as unknown as Error)
+  })
+
+  it('never placeholders an engine setup failure', () => {
+    // A site-level failure has to reach VitePress: a page of placeholders
+    // would let a build with no working engine succeed.
+    const md = createMd({ renderer: throwingRenderer(new EngineSetupError(new Error('boom'))) })
+    expect(() => md.render('$x$')).toThrow(EngineSetupError)
+    expect(() => md.render('$x$')).toThrow('boom')
+    expect(() => md.render('$$\nx\n$$')).toThrow('boom')
+    expect(() => md.render('```math\nx\n```')).toThrow('boom')
   })
 
   it('requires a renderer', () => {
