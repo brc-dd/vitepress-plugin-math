@@ -55,6 +55,18 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
   return {
     name: 'vitepress-plugin-math:styles',
 
+    async config() {
+      // `useTemmlRefs()` imports temml's UMD post-processor at runtime, which
+      // Vite would otherwise discover mid-session and answer with an
+      // optimize-and-reload. Pre-bundling it at server start keeps the page put.
+      try {
+        if ((await renderer).name !== 'temml') return undefined
+      } catch {
+        return undefined // resolution errors surface at the markdown/css await points
+      }
+      return { optimizeDeps: { include: ['temml/dist/temmlPostProcess.js'] } }
+    },
+
     resolveId(id: string) {
       if (id === MATH_STYLES_ID) return RESOLVED_STYLES_ID
       return undefined
@@ -174,6 +186,11 @@ export function withMath<T extends object>(config: T, options: ApplyMathOptions 
   // the theme (which imports the virtual css) may load before any markdown
   // is rendered.
   const renderer = resolveRenderer(options)
+  // Nothing awaits this until markdown setup or the css load hook runs, so mark
+  // a rejection handled here: the failure then surfaces at those await points,
+  // which VitePress reports without the process dying on an unhandled
+  // rejection. Every later `await renderer` still sees it.
+  renderer.catch(() => {})
 
   const cfg = config as VitePressConfigLike
   const markdown = (cfg.markdown ??= {})
