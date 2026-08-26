@@ -102,7 +102,16 @@ export async function createMathJaxRenderer(
   if (!options.texPackages && texPackages.includes('mhchem')) {
     const { createRequire } = await import('node:module')
     try {
-      createRequire(import.meta.url).resolve('@mathjax/mathjax-mhchem-font-extension')
+      // Resolve from the mathjax package's own context — that's where its
+      // loader imports the extension from, and under pnpm's strict layout
+      // the consumer-installed extension is only visible there, not from
+      // this package.
+      const requireFromHere = createRequire(import.meta.url)
+      const requireFromMathJax = createRequire(requireFromHere.resolve('mathjax/package.json'))
+      // Probe a concrete subpath — the extension's exports map has no bare
+      // `.` entry, so resolving the package id alone throws even when it is
+      // installed.
+      requireFromMathJax.resolve('@mathjax/mathjax-mhchem-font-extension/package.json')
     } catch {
       texPackages = texPackages.filter((name) => name !== 'mhchem')
       mhchemSkipped = true
