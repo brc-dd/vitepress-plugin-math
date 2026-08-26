@@ -13,3 +13,5 @@ verifyDepsBeforeRun: install
 
 update:
   githubActions: true
+patchedDependencies:
+  vitepress@2.0.0-alpha.19: patches/vitepress@2.0.0-alpha.19.patch

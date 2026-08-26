@@ -1,0 +1,12 @@
+diff --git a/dist/node/chunk-B0BRqWJx.js b/dist/node/chunk-B0BRqWJx.js
+index 9a0579c3f7085d65f6df3c25f54abfb469718d0c..8f1c7736343e12ca11b644bbcf7f630961e0c597 100644
+--- a/dist/node/chunk-B0BRqWJx.js
++++ b/dist/node/chunk-B0BRqWJx.js
+@@ -24351,6 +24351,7 @@ function getResolutionCache(siteConfig) {
+   };
+ }
+ async function createMarkdownToVueRenderFn(srcDir, options, base, includeLastUpdatedData, cleanUrls, siteConfig) {
++  options = siteConfig?.markdown ?? options;
+   const md = await createMarkdownRenderer(
+     srcDir,
+     mergeMarkdownLocales(options, siteConfig?.site.locales),

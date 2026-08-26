@@ -15,3 +15,6 @@ scripts/.cache/
 
 # local working notes (e.g. TESTING.local.md)
 *.local.md
+
+# agent worktrees
+.claude/worktrees/
