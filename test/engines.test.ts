@@ -88,6 +88,12 @@ describe('resolveRenderer', () => {
     await expect(resolveRenderer({ engine: name })).resolves.toMatchObject({ name })
   })
 
+  it('names the valid engines when given an unknown one', async () => {
+    await expect(resolveRenderer({ engine: 'katx' as never })).rejects.toThrow(
+      /Unknown engine 'katx'/,
+    )
+  })
+
   it('uses a custom renderer as-is', async () => {
     const renderer: MathRenderer = { name: 'custom', render: () => '' }
     await expect(resolveRenderer({ engine: renderer })).resolves.toBe(renderer)
