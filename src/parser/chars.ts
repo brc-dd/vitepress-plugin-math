@@ -4,6 +4,7 @@ export const PAREN_OPEN = 0x28
 export const PAREN_CLOSE = 0x29
 export const BRACKET_OPEN = 0x5b
 export const BRACKET_CLOSE = 0x5d
+export const BACKTICK = 0x60
 
 export function isAsciiDigit(code: number): boolean {
   return code >= 0x30 && code <= 0x39

@@ -10,6 +10,11 @@ function asTextToken(token: MathToken): MathToken {
   // types — represent math as its delimited source instead of dropping it,
   // re-using the delimiters the author wrote (token.markup).
   if (token.type === 'math_inline') {
+    if (token.markup.startsWith('$`')) {
+      // GitHub's `` $`…`$ ``: the closer is the opener's backtick run, then `$`.
+      const close = `${token.markup.slice(1)}$`
+      return { ...token, type: 'text', content: `${token.markup}${token.content}${close}` }
+    }
     const [open, close] = token.markup === '\\(' ? ['\\(', '\\)'] : ['$', '$']
     return { ...token, type: 'text', content: `${open}${token.content}${close}` }
   }

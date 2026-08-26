@@ -1,6 +1,7 @@
 import type { MathInlineRule, MathStateInline } from '../types.ts'
 import {
   BACKSLASH,
+  BACKTICK,
   BRACKET_OPEN,
   DOLLAR,
   PAREN_OPEN,
@@ -16,7 +17,7 @@ export interface InlineRuleOptions {
 }
 
 /**
- * `$…$` and mid-paragraph `$$…$$`.
+ * `$…$`, mid-paragraph `$$…$$`, and GitHub's `` $`…`$ ``.
  *
  * Parser lineage: the charCode scanning approach descends from
  * markdown-it-katex (MIT © 2016 Waylon Flinn) via \@mdit/plugin-tex
@@ -58,6 +59,51 @@ export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRu
     return true
   }
 
+  /**
+   * GitHub's `` $`…`$ ``: a real code span between dollars, so the TeX is
+   * protected from markdown and from escape processing. The opening backtick
+   * run is measured the way CommonMark measures a code span, and only a run of
+   * exactly that length followed by `$` closes it. No flanking rules apply —
+   * `` cost$`x`$here `` is math.
+   *
+   * Returns `false` when nothing closes the run, leaving the caller to retry
+   * the position as a plain `$…$` opener (`` a $`x$ b `` is math over
+   * `` `x ``, as on GitHub) and leaving the unclosed run to the `backticks`
+   * rule.
+   */
+  function scanCodeSpan(state: MathStateInline, silent: boolean): boolean {
+    const { src, posMax } = state
+    const start = state.pos
+    let pos = start + 1
+    while (pos < posMax && src.charCodeAt(pos) === BACKTICK) pos++
+    const openerLength = pos - (start + 1)
+
+    let matchEnd = pos
+    let matchStart = -1
+    while ((matchStart = src.indexOf('`', matchEnd)) !== -1 && matchStart < posMax) {
+      matchEnd = matchStart + 1
+      while (matchEnd < posMax && src.charCodeAt(matchEnd) === BACKTICK) matchEnd++
+      // The closing run and its `$` must both sit inside the current inline
+      // scope — never scan across a link/image label boundary.
+      if (matchEnd - matchStart !== openerLength) continue
+      if (matchEnd >= posMax || src.charCodeAt(matchEnd) !== DOLLAR) continue
+
+      if (!silent) {
+        const token = state.push('math_inline', 'math', 0)
+        token.markup = src.slice(start, pos)
+        // CommonMark code-span normalization: newlines become spaces, then one
+        // space is stripped from each end when both ends have one.
+        token.content = src
+          .slice(pos, matchStart)
+          .replace(/\n/g, ' ')
+          .replace(/^ (.+) $/, '$1')
+      }
+      state.pos = matchEnd + 1
+      return true
+    }
+    return false
+  }
+
   return (state, silent) => {
     // Inline silent mode means we are inside parseLinkLabel's probe, where
     // posMax is still the whole line — a forward closer scan here could
@@ -71,6 +117,15 @@ export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRu
     if (start + 1 < posMax && src.charCodeAt(start + 1) === DOLLAR) {
       if (!inlineDisplay) return false
       return scanDouble(state, silent)
+    }
+
+    if (
+      start + 1 < posMax &&
+      src.charCodeAt(start + 1) === BACKTICK &&
+      !isEscaped(src, start) &&
+      scanCodeSpan(state, silent)
+    ) {
+      return true
     }
 
     const prev = start > 0 ? src.charCodeAt(start - 1) : -1

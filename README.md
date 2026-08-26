@@ -84,6 +84,7 @@ mathPlugin(md, { renderer: await createKatexRenderer(), vPre: false })
 | Input | Result |
 | --- | --- |
 | `$x+y$`, `\(x+y\)` | inline math |
+| <code>$\`x+y\`$</code> | inline math, GitHub's dollar-backtick form — a code span, so the TeX is protected from markdown processing |
 | `$$ … $$`, `\[ … \]` (own lines) | display math block |
 | `a $$x$$ b`, `a \[x\] b` | display math rendered inline |
 | ` ```math ` fenced block | display math block |

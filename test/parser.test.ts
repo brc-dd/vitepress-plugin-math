@@ -10,6 +10,7 @@ import {
 /** Fixture file → the plugin options its expected output was written for. */
 const SUITES: [file: string, options: TestMdOptions][] = [
   ['inline-dollars', {}],
+  ['dollar-backtick', {}],
   ['block-dollars', {}],
   ['brackets', {}],
   ['fence', {}],
@@ -277,6 +278,20 @@ describe('multiline inline math', () => {
   })
 })
 
+describe("GitHub's dollar-backtick form", () => {
+  it('is inert under `delimiters: "brackets"`', () => {
+    const bracketsMd = createFixtureMd({ delimiters: 'brackets' })
+    expect(bracketsMd.render('a $`x+y`$ b').trim()).toBe('<p>a $<code>x+y</code>$ b</p>')
+  })
+
+  it('leaves the backticks rule its own code spans', () => {
+    expect(md.render('$`x`$ and `y` and $`z`$').trim()).toBe(
+      '<p><span class="vpm vpm-inline">[I:x]</span> and <code>y</code> and ' +
+        '<span class="vpm vpm-inline">[I:z]</span></p>',
+    )
+  })
+})
+
 describe('token shape', () => {
   it('describes a block token', () => {
     const labelMd = createFixtureMd({ labels: true, renderer: createLabelProbeRenderer() })
@@ -294,7 +309,8 @@ describe('token shape', () => {
   })
 
   it('describes inline tokens', () => {
-    const children = md.parseInline('a $x$ b $$y$$ c \\(z\\) d \\[w\\]', {})[0]?.children ?? []
+    const children =
+      md.parseInline('a $x$ b $$y$$ c \\(z\\) d \\[w\\] e $`v`$', {})[0]?.children ?? []
     expect(
       children
         .filter((token) => token.type.startsWith('math_'))
@@ -304,6 +320,7 @@ describe('token shape', () => {
       { type: 'math_inline_display', tag: 'math', markup: '$$', content: 'y' },
       { type: 'math_inline', tag: 'math', markup: '\\(', content: 'z' },
       { type: 'math_inline_display', tag: 'math', markup: '\\[', content: 'w' },
+      { type: 'math_inline', tag: 'math', markup: '$`', content: 'v' },
     ])
   })
 
@@ -317,6 +334,8 @@ describe('image alt text', () => {
   it.each([
     ['![$a$ alt](x.png)', 'alt="$a$ alt"'],
     ['![$$a$$ alt](x.png)', 'alt="$$a$$ alt"'],
+    ['![$`a`$ alt](x.png)', 'alt="$`a`$ alt"'],
+    ['![$``a``$ alt](x.png)', 'alt="$``a``$ alt"'],
     ['![before ![$b$ nested](n.png) after](x.png)', 'alt="before $b$ nested after"'],
     ['![plain](x.png)', 'alt="plain"'],
   ])('renders %s as text', (src, expected) => {
