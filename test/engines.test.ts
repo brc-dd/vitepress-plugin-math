@@ -373,4 +373,33 @@ describe('mathjax', () => {
     expect(/mjx-eqn:(\d+)/.exec(first)?.[1]).toBe('1')
     expect(/mjx-eqn:(\d+)/.exec(second)?.[1]).toBe('1')
   })
+
+  it('strips the TeX jax data-latex attributes', () => {
+    const html = renderer.render('\\frac{a}{b}', display)
+    expect(html).not.toContain('data-latex')
+    // The wrapper's own `data-tex` is the single copy of the TeX source.
+    expect(html).toContain('<svg')
+  })
+
+  it('keeps them with stripLatexData: false', async () => {
+    const keep = await createMathJaxRenderer({ stripLatexData: false })
+    expect(keep.render('x^2', inline)).toContain('data-latex="x^2"')
+  })
+
+  // Last in the file: these switch the process-wide MathJax over, and one
+  // process may only ever run one `init()`.
+  it('switches output format in-process, and back', async () => {
+    const chtml = await createMathJaxRenderer({ output: 'chtml' })
+    expect(chtml.render('x^2', inline)).toContain('<mjx-container class="MathJax" jax="CHTML"')
+
+    const css = chtml.stylesheet?.() ?? ''
+    expect(css).toContain('/vpm-fonts/mathjax/mathjax-newcm-font/')
+    // The font extension a `\ce{…}` page needs, referenced under its own name.
+    expect(css).toContain('/vpm-fonts/mathjax/mathjax-mhchem-font-extension/')
+    // Left bare, these specifiers 404 in every browser.
+    expect(css).not.toContain('@mathjax/')
+
+    const svg = await createMathJaxRenderer()
+    expect(svg.render('x^2', inline)).toContain('<mjx-container class="MathJax" jax="SVG"')
+  }, 60_000)
 })

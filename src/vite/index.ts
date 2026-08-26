@@ -13,6 +13,12 @@ export const MATH_STYLES_ID = 'virtual:vitepress-plugin-math.css'
 const RESOLVED_STYLES_ID = '\0' + MATH_STYLES_ID
 const FONT_URL = '/vpm-fonts/mathjax'
 
+/** The `<font-package>` segment of a served font URL, as the engine emits it. */
+const FONT_PACKAGE_RE = new RegExp(`${FONT_URL}/([\\w.-]+)/`, 'g')
+
+/** `<font-package>/<file>.woff2`, the part of a font URL past the mount path. */
+const FONT_REQUEST_RE = /^([\w.-]+)\/([\w.-]+\.woff2)$/
+
 const JSDELIVR = 'https://cdn.jsdelivr.net/npm'
 
 /** The upstream KaTeX stylesheet, exactly as `styles/katex.css` imports it. */
@@ -38,7 +44,7 @@ interface VitePressConfigLike {
   }
 }
 
-/** Where an installed package's fonts live locally, and which version they are. */
+/** Where an installed font package's files live, and which version they are. */
 interface FontPackage {
   /** Absolute path of the package's `chtml/woff2` directory. */
   dir: string
@@ -46,14 +52,20 @@ interface FontPackage {
   version: string
 }
 
-function mathJaxFontPackage(): FontPackage | null {
+/**
+ * Locates one `\@mathjax/<pkg>` font package — the main font or any of the
+ * font extensions (mhchem, …), each of which the engine references under its
+ * own name.
+ */
+function mathJaxFontPackageDir(pkg: string): FontPackage | null {
   try {
     // Resolved through the mathjax package so the font version matches the
-    // installed engine (the font package is mathjax's own dependency).
+    // installed engine (the font packages are mathjax's own dependencies,
+    // and under pnpm's strict layout they are only visible from there).
     const requireFromHere = createRequire(import.meta.url)
     const mathjaxPkg = requireFromHere.resolve('mathjax/package.json')
     const requireFromMathJax = createRequire(mathjaxPkg)
-    const fontPkg = requireFromMathJax.resolve('@mathjax/mathjax-newcm-font/package.json')
+    const fontPkg = requireFromMathJax.resolve(`@mathjax/${pkg}/package.json`)
     const { version } = requireFromMathJax(fontPkg) as { version?: string }
     if (!version) return null
     return { dir: fontPkg.replace(/package\.json$/, 'chtml/woff2'), version }
@@ -97,13 +109,15 @@ function usesWebFonts(config: ResolvedConfigLike): boolean {
 /**
  * Vite plugins serving the engine's runtime-generated stylesheet as
  * `virtual:vitepress-plugin-math.css`, plus the MathJax CHTML webfonts under
- * `/vpm-fonts/mathjax` (dev middleware + emitted build assets — self-hosted by
- * default). Pass the same renderer (or promise of one) that the markdown
+ * `/vpm-fonts/mathjax/<font-package>` (dev middleware + emitted build assets —
+ * self-hosted by default). Which font packages those are is read back out of
+ * the stylesheet, so a site loading a font extension (mhchem, …) gets its
+ * files too. Pass the same renderer (or promise of one) that the markdown
  * plugin uses.
  *
  * Under VitePress's `useWebFonts` — on by default inside a webcontainer,
  * where serving font binaries is the expensive part — the MathJax and KaTeX
- * fonts come from jsDelivr instead, pinned to the installed versions, and
+ * fonts come from jsDelivr instead, each pinned to its installed version, and
  * nothing local is served or emitted for them. Temml stays self-hosted either
  * way: its Latin Modern WOFF2 is vendored in this package, which is not yet on
  * npm, so there is no CDN copy to point at.
@@ -112,8 +126,8 @@ function usesWebFonts(config: ResolvedConfigLike): boolean {
  * it is its own plugin. Vite flattens nested arrays in `plugins`.
  */
 export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRenderer): unknown {
-  let fontDir: string | null = null
-  let needsFonts = false
+  /** Font packages the loaded stylesheet still points at our own font URL. */
+  let localFontPackages: string[] = []
   let webFonts = false
 
   const katexCdnPlugin = {
@@ -174,16 +188,28 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
       }
       const css = resolved.stylesheet?.() ?? ''
       if (!css.includes(FONT_URL)) return css
-      const font = mathJaxFontPackage()
-      if (webFonts && font) {
-        return css.replaceAll(
-          FONT_URL,
-          `${JSDELIVR}/@mathjax/mathjax-newcm-font@${font.version}/chtml/woff2`,
+      // The stylesheet is the source of truth for which font packages are in
+      // play: the engine names one per `@font-face` prefix, and which ones
+      // appear depends on the TeX packages the site actually loaded.
+      const packages = new Set<string>()
+      for (const match of css.matchAll(FONT_PACKAGE_RE)) if (match[1]) packages.add(match[1])
+      const local: string[] = []
+      let out = css
+      for (const pkg of packages) {
+        const font = webFonts ? mathJaxFontPackageDir(pkg) : null
+        if (!font) {
+          // Self-hosting, or a package we cannot resolve a version for —
+          // either way its files stay ours to serve.
+          local.push(pkg)
+          continue
+        }
+        out = out.replaceAll(
+          `${FONT_URL}/${pkg}`,
+          `${JSDELIVR}/@mathjax/${pkg}@${font.version}/chtml/woff2`,
         )
       }
-      needsFonts = true
-      fontDir = font?.dir ?? null
-      return css
+      localFontPackages = local
+      return out
     },
 
     async configureServer(server: {
@@ -195,9 +221,10 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
       const { readFile } = await import('node:fs/promises')
       server.middlewares.use(FONT_URL, (req, res, next) => {
         const url = (req as { url?: string }).url ?? ''
-        const name = url.replace(/^\/+/, '').replace(/[?#].*$/, '')
-        const dir = fontDir ?? mathJaxFontPackage()?.dir
-        if (!dir || !/^[\w.-]+\.woff2$/.test(name)) return next()
+        const path = url.replace(/^\/+/, '').replace(/[?#].*$/, '')
+        const [, pkg, name] = FONT_REQUEST_RE.exec(path) ?? []
+        const dir = pkg ? mathJaxFontPackageDir(pkg)?.dir : undefined
+        if (!dir || !name) return next()
         readFile(`${dir}/${name}`).then(
           (data) => {
             const r = res as {
@@ -226,20 +253,25 @@ export function mathStylesPlugin(renderer: PromiseLike<MathRenderer> | MathRende
         }
       }
 
-      if (!needsFonts) return
-      const dir = fontDir ?? mathJaxFontPackage()?.dir
-      if (!dir) return
+      if (!localFontPackages.length) return
       const { readdir, readFile } = await import('node:fs/promises')
       const self = this as unknown as {
         emitFile(file: { type: 'asset'; fileName: string; source: Uint8Array }): void
       }
-      for (const name of await readdir(dir)) {
-        if (!name.endsWith('.woff2')) continue
-        self.emitFile({
-          type: 'asset',
-          fileName: `${FONT_URL.slice(1)}/${name}`,
-          source: await readFile(`${dir}/${name}`),
-        })
+      for (const pkg of localFontPackages) {
+        const dir = mathJaxFontPackageDir(pkg)?.dir
+        if (!dir) continue
+        // Walk the directory rather than the stylesheet's reference list:
+        // upstream names a handful of files it does not ship, and a copy
+        // driven by the references would fail on those.
+        for (const name of await readdir(dir)) {
+          if (!name.endsWith('.woff2')) continue
+          self.emitFile({
+            type: 'asset',
+            fileName: `${FONT_URL.slice(1)}/${pkg}/${name}`,
+            source: await readFile(`${dir}/${name}`),
+          })
+        }
       }
     },
 
