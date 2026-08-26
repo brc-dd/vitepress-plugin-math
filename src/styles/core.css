@@ -48,20 +48,24 @@
   display: inline-block;
 }
 
-/* iOS Safari treats the SVG output as an image: long-press runs Live Text
-   (OCR) selection on it, doubling our own affordance. There is no real text
-   inside — suppress native selection and the image callout. Copying stays
-   available through the long-press chip and prose-spanning selections
-   (Range APIs ignore user-select). */
+/* VitePress's theme makes mjx-container itself scroll (overflow-x: auto),
+   creating a second, implicitly-focusable scroller inside our focusable
+   wrapper — arrow keys then only work after tabbing to the inner one. Let
+   the overflow propagate so the wrapper is the single scroller. */
 .vpm mjx-container {
+  overflow: visible;
+}
+
+/* SVG output only: iOS Safari treats it as an image — long-press runs Live
+   Text (OCR) selection on it, doubling our own affordance. There is no real
+   text inside — suppress native selection and the image callout. Copying
+   stays available through the long-press chip and prose-spanning selections
+   (Range APIs ignore user-select). CHTML output holds real selectable text
+   and keeps native gestures. */
+.vpm mjx-container[jax='SVG'] {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
-  /* VitePress's theme makes mjx-container itself scroll (overflow-x: auto),
-     creating a second, implicitly-focusable scroller inside our focusable
-     wrapper — arrow keys then only work after tabbing to the inner one.
-     Let the overflow propagate so the wrapper is the single scroller. */
-  overflow: visible;
 }
 
 /* Long-press copy chip (touch devices). */

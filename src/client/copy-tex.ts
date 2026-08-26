@@ -56,6 +56,22 @@ function rootOf(node: Node, roots: readonly string[]): Element | null {
   return null
 }
 
+/**
+ * Whether a formula's rendered output holds no selectable text, so the
+ * browser's own selection gestures cannot grab it. True only for MathJax's
+ * SVG output (`mjx-container` with `jax="SVG"` / a direct `<svg>` child —
+ * KaTeX also embeds svg for stretchy glyphs, but inside selectable HTML).
+ * KaTeX, Temml, and MathJax CHTML render selectable DOM: they keep native
+ * selection gestures, and only the copy handler rewrites the clipboard.
+ */
+function needsAssistedSelection(root: Element): boolean {
+  const container = root.matches('mjx-container') ? root : root.querySelector('mjx-container')
+  if (!container) return false
+  if (container.getAttribute('jax') === 'SVG') return true
+  const child = container.firstElementChild
+  return !!child && child.tagName.toLowerCase() === 'svg'
+}
+
 /** Extracts the TeX source of a math root element, or `null` if it has none. */
 export function texOf(root: Element): string | null {
   const own = root.getAttribute('data-tex') // our wrapper — always wins
@@ -121,6 +137,8 @@ export interface DblclickSelectHandle {
   handleSelectionChange(): void
   /** Drops the mark when the pointer goes down outside the formula. */
   handlePointerDown(event: PointerEvent | MouseEvent): void
+  /** Escape dismisses the mark (and the math selection backing it). */
+  handleKeydown(event: KeyboardEvent): void
   /**
    * Touch long-press on a formula selects it (iOS's own long-press finds no
    * text inside SVG output and grabs neighboring prose instead). Wire
@@ -143,13 +161,6 @@ export interface DblclickSelectHandle {
  */
 const MARK_GRACE_MS = 500
 
-/**
- * Double-click selects the whole formula under the pointer, so a plain copy
- * grabs its TeX. Because SVG-rendered math (MathJax) gets no native
- * `::selection` paint, the selected wrapper is additionally marked with a
- * `vpm-selected` class — styled like a text selection by `core.css` — and
- * unmarked as soon as the selection moves elsewhere.
- */
 /** Touch long-press duration before a formula is selected. */
 const LONG_PRESS_MS = 400
 /** Finger travel (px) that cancels a pending long-press. */
@@ -192,6 +203,15 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/**
+ * Assisted selection for formulas the browser cannot select on its own
+ * (MathJax SVG output). Double-click (mouse) selects the whole formula and
+ * marks it with a `vpm-selected` overlay, so a plain copy grabs its TeX;
+ * double-tap / long-press (touch) marks it and offers a "Copy TeX" chip
+ * instead, never touching the OS selection UI. Formulas rendered as
+ * selectable DOM (KaTeX, Temml, MathJax CHTML) are left to the browser's
+ * native gestures — only the copy handler rewrites their clipboard text.
+ */
 export function createDblclickSelectHandler(options: CopyTexOptions = {}): DblclickSelectHandle {
   const roots = options.roots ?? DEFAULT_ROOTS
   const delimiters = options.delimiters ?? DEFAULT_DELIMITERS
@@ -267,13 +287,13 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       const target = event.target
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
-      if (root && texOf(root) !== null) event.preventDefault()
+      if (root && texOf(root) !== null && needsAssistedSelection(root)) event.preventDefault()
     },
     handleDblclick(event) {
       const target = event.target
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
-      if (!root || texOf(root) === null) return
+      if (!root || texOf(root) === null || !needsAssistedSelection(root)) return
       // Touch double-taps take the chip path: a DOM selection would summon
       // the OS selection UI, and the next tap would collapse it (reading as
       // dismissal). Mouse keeps the selection + Cmd+C flow.
@@ -293,7 +313,7 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       const target = event.target
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
-      if (!root || texOf(root) === null) return
+      if (!root || texOf(root) === null || !needsAssistedSelection(root)) return
       pressStart = { x: touch.clientX, y: touch.clientY }
       pressTimer = setTimeout(() => {
         pressTimer = null
@@ -336,6 +356,24 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       const target = event.target
       if (!(target instanceof Node)) return
       if (marked.contains(target) || (chip && chip.contains(target))) return
+      clear()
+    },
+    handleKeydown(event) {
+      // No preventDefault/stopPropagation: a mark implies math context, and
+      // letting Escape bubble keeps overlays (search modal, …) working.
+      if (event.key !== 'Escape' || !marked) return
+      if (markedWithSelection) {
+        const selection = window.getSelection()
+        if (
+          selection &&
+          !selection.isCollapsed &&
+          selection.rangeCount > 0 &&
+          selection.getRangeAt(0).intersectsNode(marked)
+        ) {
+          // Only the selection backing OUR mark — never an unrelated one.
+          selection.removeAllRanges()
+        }
+      }
       clear()
     },
     getMarked: () => marked,

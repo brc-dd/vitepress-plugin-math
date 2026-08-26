@@ -15,10 +15,12 @@ export type { CopyTexDelimiters, CopyTexOptions } from './copy-tex.ts'
 
 export interface UseCopyTexOptions extends CopyTexOptions {
   /**
-   * Double-clicking a formula selects the whole formula, so a plain copy
-   * grabs its TeX. Without this, engines whose rendered output has no
-   * selectable text (MathJax SVG) cannot be copied on their own — only as
-   * part of a larger selection.
+   * Assisted selection for SVG-rendered math (MathJax's default output),
+   * which holds no selectable text: double-click selects + highlights the
+   * whole formula, double-tap / long-press shows a "Copy TeX" chip on
+   * touch. Engines rendering selectable DOM (KaTeX, Temml, MathJax CHTML)
+   * are never affected — they keep native selection gestures. Disable if
+   * you want plain browser behavior everywhere.
    * @default true
    */
   selectOnDblclick?: boolean
@@ -53,6 +55,7 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
       document.addEventListener('dblclick', select.handleDblclick)
       document.addEventListener('selectionchange', select.handleSelectionChange)
       document.addEventListener('pointerdown', select.handlePointerDown)
+      document.addEventListener('keydown', select.handleKeydown)
       document.addEventListener('touchstart', select.handleTouchStart, { passive: true })
       document.addEventListener('touchmove', select.handleTouchMove, { passive: true })
       document.addEventListener('touchend', select.handleTouchEnd)
@@ -72,6 +75,7 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
       document.removeEventListener('dblclick', select.handleDblclick)
       document.removeEventListener('selectionchange', select.handleSelectionChange)
       document.removeEventListener('pointerdown', select.handlePointerDown)
+      document.removeEventListener('keydown', select.handleKeydown)
       document.removeEventListener('touchstart', select.handleTouchStart)
       document.removeEventListener('touchmove', select.handleTouchMove)
       document.removeEventListener('touchend', select.handleTouchEnd)
