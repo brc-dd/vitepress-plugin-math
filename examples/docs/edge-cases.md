@@ -2,7 +2,9 @@
 
 Things that must **stay literal**:
 
-- Prices: $5 and $10, or 5$ and 10$
+- Prices, escaped: \$5 and \$10, or 5\$ and 10\$ — two bare `$` around digits
+  can pair up into math (`$10, or 5$` here would), so a literal `$` in prose
+  is always `\$`
 - Escaped: \$not math\$, and `\$` in code
 - Space-padded: $ not math $
 - Word-adjacent: café$x$ or cost$5

@@ -565,6 +565,20 @@ $1 $c$
 <p>$1 <span class="vpm vpm-inline">[I:c]</span></p>
 .
 
+currency pairs can capture (same shape as the previous case) — prose dollars need escaping
+.
+Prices: $5 and $10, or 5$ and 10$
+.
+<p>Prices: $5 and <span class="vpm vpm-inline">[I:10, or 5]</span> and 10$</p>
+.
+
+escaped currency stays literal
+.
+Prices: \$5 and \$10, or 5\$ and 10\$
+.
+<p>Prices: $5 and $10, or 5$ and 10$</p>
+.
+
 accented word before the opener rejects it
 .
 café$x$
