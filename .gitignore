@@ -12,3 +12,6 @@ coverage
 # downloaded font originals + opt-in `--subset` output (see scripts/fonts.py);
 # the emitted fonts in `src/fonts` are committed on purpose and stay tracked
 scripts/.cache/
+
+# local working notes (e.g. TESTING.local.md)
+*.local.md
