@@ -30,9 +30,9 @@ export interface UseCopyTexOptions extends CopyTexOptions {
  * Copy-as-TeX for rendered math: selections containing formulas put the
  * original TeX (in `$…$`/`$$…$$`) on the plain-text clipboard.
  *
- * SSR-safe — no browser globals at import time; one delegated `document`
- * listener installed in `onMounted`, so it survives SPA navigation. Call it
- * from a wrapping Layout component's `<script setup>` (VitePress's
+ * SSR-safe — no browser globals at import time; delegated `document`
+ * listeners installed in `onMounted`, so they survive SPA navigation. Call
+ * it from a wrapping Layout component's `<script setup>` (VitePress's
  * `Theme.setup()` is deprecated, and `enhanceApp` runs during the SSR
  * build):
  *
@@ -67,9 +67,17 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
       ...(marked ? { fallbackRoot: () => marked.getMarked() } : {}),
     })
     document.addEventListener('copy', copy)
+    // `cut` over a non-editable selection behaves as a copy — same handler.
+    document.addEventListener('cut', copy)
   })
+  // A page swap leaves the mark and its chip behind, floating over new
+  // content and pointing at a detached formula.
+  onContentUpdated(() => select?.clear())
   onUnmounted(() => {
-    if (copy) document.removeEventListener('copy', copy)
+    if (copy) {
+      document.removeEventListener('copy', copy)
+      document.removeEventListener('cut', copy)
+    }
     if (select) {
       document.removeEventListener('mousedown', select.handleMouseDown)
       document.removeEventListener('dblclick', select.handleDblclick)

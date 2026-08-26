@@ -77,8 +77,11 @@
   border: none;
   border-radius: 6px;
   padding: 5px 12px;
-  background-color: var(--vp-c-brand-1, #3451b2);
-  color: var(--vp-c-white, #fff);
+  /* the theme's button pair, not --vp-c-brand-1 on white: brand-1 is tuned
+     for text ON the page background and only reaches 2:1 against white in
+     dark mode, while the button pair is contrast-checked in both themes */
+  background-color: var(--vp-button-brand-bg, #3451b2);
+  color: var(--vp-button-brand-text, #fff);
   font-family: var(--vp-font-family-base, inherit);
   font-size: 12px;
   font-weight: 600;
@@ -95,6 +98,14 @@
   border-radius: 4px;
   background-color: var(--vp-c-brand-soft, rgba(100, 108, 255, 0.14));
   pointer-events: none;
+}
+
+/* Selection affordances are on-screen tools — they have no place on paper. */
+@media print {
+  .vpm-copy-chip,
+  .vpm-selected::after {
+    display: none;
+  }
 }
 
 .vpm-error {

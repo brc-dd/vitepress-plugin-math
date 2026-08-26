@@ -34,7 +34,9 @@ export interface CopyTexOptions {
    * A formula to copy when there is no usable selection — the dblclick
    * handler's marked element. SVG output holds no selectable text, so the
    * browser may collapse the selection after a double-click; the mark keeps
-   * copy working regardless.
+   * copy working regardless. With no marked formula, the copy handler falls
+   * back to the focused wrapper (display math is tabindex-focusable, so
+   * Tab + Ctrl/Cmd+C copies its TeX).
    */
   fallbackRoot?: () => Element | null
 }
@@ -115,13 +117,29 @@ export function replaceMathWithTex(
   return fragment
 }
 
-function hasMath(fragment: DocumentFragment, roots: readonly string[]): boolean {
+/** Whether `fragment` holds a math root satisfying `match`. */
+function hasRoot(
+  fragment: DocumentFragment,
+  roots: readonly string[],
+  match: (root: Element) => boolean,
+): boolean {
   for (const selector of roots) {
     for (const el of fragment.querySelectorAll(selector)) {
-      if (texOf(el) !== null) return true
+      if (match(el)) return true
     }
   }
   return false
+}
+
+/**
+ * Serializes a fragment as HTML markup. Goes through a detached element
+ * rather than concatenating `outerHTML`, so top-level text is escaped and
+ * comment nodes keep their syntax.
+ */
+function serializeFragment(fragment: DocumentFragment): string {
+  const holder = document.createElement('div')
+  holder.append(fragment.cloneNode(true)) // a fragment is emptied by append
+  return holder.innerHTML
 }
 
 export interface DblclickSelectHandle {
@@ -165,6 +183,8 @@ const MARK_GRACE_MS = 500
 const LONG_PRESS_MS = 400
 /** Finger travel (px) that cancels a pending long-press. */
 const LONG_PRESS_SLOP = 10
+/** Gap (px) kept between the copy chip's center and the viewport edges. */
+const CHIP_MARGIN = 8
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -180,6 +200,7 @@ async function copyText(text: string): Promise<boolean> {
     // viewport still, and 16px dodges iOS input auto-zoom.
     const x = window.scrollX
     const y = window.scrollY
+    const active = document.activeElement
     const area = document.createElement('textarea')
     area.value = text
     area.readOnly = true
@@ -198,6 +219,8 @@ async function copyText(text: string): Promise<boolean> {
       ok = false
     }
     area.remove()
+    // Focusing the textarea took focus off whatever had it — hand it back.
+    if (active instanceof HTMLElement) active.focus({ preventScroll: true })
     if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y)
     return ok
   }
@@ -230,6 +253,8 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
     marked = null
     chip?.remove()
     chip = null
+    window.removeEventListener('resize', clear)
+    window.removeEventListener('orientationchange', clear)
   }
 
   const cancelPress = () => {
@@ -265,9 +290,23 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
     chip = document.createElement('button')
     chip.type = 'button'
     chip.className = 'vpm-copy-chip'
+    // The label swaps to "Copied!" in place — announce that to screen
+    // readers. aria-live (not role="status") keeps the element's button role.
+    chip.setAttribute('aria-live', 'polite')
     chip.textContent = 'Copy TeX'
-    chip.style.left = `${rect.left + window.scrollX + rect.width / 2}px`
+    // The chip is centered on its `left` (translate(-50%)); keep that center
+    // inside the viewport so a formula at either edge stays reachable.
+    const center = Math.min(
+      Math.max(rect.left + rect.width / 2, CHIP_MARGIN),
+      window.innerWidth - CHIP_MARGIN,
+    )
+    chip.style.left = `${center + window.scrollX}px`
     chip.style.top = `${rect.top + window.scrollY}px`
+    // The chip sits at page coordinates taken once, so any reflow (rotation,
+    // window resize, sidebar toggle) strands it — dismiss instead. Plain
+    // scrolling moves the page and the chip together and is left alone.
+    window.addEventListener('resize', clear)
+    window.addEventListener('orientationchange', clear)
     chip.addEventListener('click', () => {
       const tex = texOf(root)
       if (tex === null || !chip) return
@@ -294,10 +333,10 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       if (!(target instanceof Element)) return
       const root = rootOf(target, roots)
       if (!root || texOf(root) === null || !needsAssistedSelection(root)) return
-      // Touch double-taps take the chip path: a DOM selection would summon
-      // the OS selection UI, and the next tap would collapse it (reading as
-      // dismissal). Mouse keeps the selection + Cmd+C flow.
-      if (lastPointerType === 'touch') {
+      // Touch and stylus double-taps take the chip path: a DOM selection
+      // would summon the OS selection UI, and the next tap would collapse it
+      // (reading as dismissal). Mouse keeps the selection + Cmd+C flow.
+      if (lastPointerType === 'touch' || lastPointerType === 'pen') {
         markWithChip(root)
         return
       }
@@ -376,14 +415,18 @@ export function createDblclickSelectHandler(options: CopyTexOptions = {}): Dblcl
       }
       clear()
     },
-    getMarked: () => marked,
+    // A page swap can detach the marked formula — a node out of the document
+    // must never back the copy fallback.
+    getMarked: () => (marked?.isConnected ? marked : null),
     clear,
   }
 }
 
 /**
- * Creates the `copy` event handler. Attach it to `document` once — it is
- * delegated, so it survives SPA navigation without re-initialization.
+ * Creates the handler for `copy` and `cut` (over a non-editable selection
+ * `cut` behaves as a copy, so one handler serves both). Attach it to
+ * `document` once — it is delegated, so it survives SPA navigation without
+ * re-initialization.
  */
 export function createCopyTexHandler(
   options: CopyTexOptions = {},
@@ -392,12 +435,26 @@ export function createCopyTexHandler(
   const delimiters = options.delimiters ?? DEFAULT_DELIMITERS
   return (event) => {
     if (!event.clipboardData) return
+    // Copying from a field (VitePress's search box, an editable demo) is the
+    // field's business: the page selection reads as collapsed there, so the
+    // fallback below would otherwise hijack the clipboard with a formula.
+    const target = event.target
+    if (
+      target instanceof Element &&
+      target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+    ) {
+      return
+    }
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed) {
-      // No usable selection but a formula is marked (dblclick over SVG
-      // output, where the browser may have collapsed the selection) — copy
-      // the marked formula directly.
-      const fallback = options.fallbackRoot?.()
+      // No usable selection, but a formula is marked (dblclick over SVG
+      // output, where the browser may have collapsed the selection) or
+      // focused (Tab reaches display wrappers) — copy that formula.
+      const fallback =
+        options.fallbackRoot?.() ??
+        (document.activeElement instanceof Element
+          ? document.activeElement.closest('[data-tex]')
+          : null)
       const tex = fallback ? texOf(fallback) : null
       if (!fallback || tex === null) return
       const [open, close] = isDisplayMath(fallback) ? delimiters.display : delimiters.inline
@@ -410,21 +467,57 @@ export function createCopyTexHandler(
       const container = options.container()
       if (!container || !container.contains(selection.anchorNode)) return
     }
-    // getRangeAt(0) is LIVE — mutating it would visibly expand the user's
-    // selection. Clone, then expand partial selections to whole formulas.
-    const range = selection.getRangeAt(0).cloneRange()
-    const startRoot = rootOf(range.startContainer, roots)
-    if (startRoot) range.setStartBefore(startRoot)
-    const endRoot = rootOf(range.endContainer, roots)
-    if (endRoot) range.setEndAfter(endRoot)
-    const fragment = range.cloneContents()
-    if (!hasMath(fragment, roots)) return // no math — browser default
+    // Old Gecko splits a selection at `user-select: none` boundaries into one
+    // range per run of selectable content — reading only the first would drop
+    // everything past the first formula. Other engines report a single range,
+    // so the loop degenerates to it.
+    const fragments: DocumentFragment[] = []
+    for (let i = 0; i < selection.rangeCount; i++) {
+      // getRangeAt is LIVE — mutating it would visibly expand the user's
+      // selection. Clone, then expand partial selections to whole formulas.
+      const range = selection.getRangeAt(i).cloneRange()
+      const startRoot = rootOf(range.startContainer, roots)
+      if (startRoot) range.setStartBefore(startRoot)
+      const endRoot = rootOf(range.endContainer, roots)
+      if (endRoot) {
+        // Chromium parks a triple-click's end boundary at offset 0 inside the
+        // NEXT formula, where expanding would swallow one the user never
+        // selected. Range.toString() is CSS-blind (unlike Selection's), so it
+        // reports the text the boundary actually covers. A boundary parked at
+        // the very start of the formula selects nothing of it. SVG output
+        // holds no text, so an empty string there is inconclusive and the
+        // formula stays included.
+        const head = document.createRange()
+        head.setStartBefore(endRoot)
+        head.setEnd(range.endContainer, range.endOffset)
+        if (head.toString() !== '' || needsAssistedSelection(endRoot)) range.setEndAfter(endRoot)
+      }
+      fragments.push(range.cloneContents())
+    }
+    const hasMath = fragments.some((fragment) =>
+      hasRoot(fragment, roots, (root) => texOf(root) !== null),
+    )
+    if (!hasMath) return // no math — browser default
 
-    const html = Array.from(fragment.childNodes)
-      .map((node) => (node.nodeType === 3 ? node.textContent : (node as Element).outerHTML))
+    // Rendered KaTeX/CHTML markup pastes as garbage into a rich editor: it
+    // needs the engine's stylesheet to mean anything. There, the
+    // TeX-substituted markup is the better rich flavor — prose formatting
+    // survives and the math reads as `$…$`. MathJax's SVG output carries its
+    // own geometry and pastes acceptably, so it keeps the rendered markup,
+    // serialized before the substitution mutates the fragments.
+    const keepRendered = fragments.some((fragment) =>
+      hasRoot(fragment, roots, needsAssistedSelection),
+    )
+    const rendered = keepRendered ? fragments.map(serializeFragment).join('') : ''
+    for (const fragment of fragments) replaceMathWithTex(fragment, options)
+    event.clipboardData.setData(
+      'text/html',
+      keepRendered ? rendered : fragments.map(serializeFragment).join(''),
+    )
+    // Split ranges cover contiguous document text — joined with nothing.
+    const text = fragments
+      .map((fragment) => fragment.textContent ?? '')
       .join('')
-    event.clipboardData.setData('text/html', html)
-    const text = (replaceMathWithTex(fragment, options).textContent ?? '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^\n+|\n+$/g, '')
     event.clipboardData.setData('text/plain', text)
