@@ -1,0 +1,79 @@
+name: Deploy docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# One deployment pipeline at a time; never cancel an in-flight production
+# deploy — queued runs are superseded by the newest instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  TZ: UTC
+  LANG: en_US.UTF-8
+  FORCE_COLOR: '1'
+  SITE_BASE: /vitepress-plugin-math/
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm and node
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          cache: true
+
+      - name: Build the plugin
+        run: pnpm build
+
+      # `--outDir` is cwd-relative, so every build lands in one _site/ tree.
+      # The base comes from the CLI — the app configs deliberately set none.
+      - name: Build docs site
+        run: |
+          pnpm -C docs exec vitepress build . \
+            --base "$SITE_BASE" \
+            --outDir "$GITHUB_WORKSPACE/_site"
+
+      - name: Build per-engine example apps
+        run: |
+          set -euo pipefail
+          for engine in mathjax katex temml webc; do
+            echo "::group::build $engine"
+            VPM_ENGINE="$engine" pnpm -C examples/docs exec vitepress build . \
+              --base "${SITE_BASE}examples/${engine}/" \
+              --outDir "$GITHUB_WORKSPACE/_site/examples/${engine}"
+            echo "::endgroup::"
+          done
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write # create the Pages deployment
+      id-token: write # mint the OIDC token the deployment is validated with
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
