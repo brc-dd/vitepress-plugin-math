@@ -5,6 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# No token scopes by default; every job grants only what it needs.
 permissions: {}
 
 # One deployment pipeline at a time; never cancel an in-flight production

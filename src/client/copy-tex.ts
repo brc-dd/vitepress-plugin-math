@@ -193,11 +193,11 @@ async function copyText(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text)
     return true
   } catch {
-    // execCommand fallback, tuned to not disturb iOS Safari: `select()`
-    // would focus the textarea with scrolling, popping the keyboard and
-    // collapsing/expanding the browser chrome (visible as a scroll jump).
-    // readonly suppresses the keyboard, preventScroll + restore keep the
-    // viewport still, and 16px dodges iOS input auto-zoom.
+    // execCommand fallback, tuned for iOS Safari: `readOnly` keeps the
+    // keyboard (and the resizing browser chrome) away, `preventScroll` plus
+    // the scroll restore keep the viewport still, and 16px dodges input
+    // auto-zoom. `setSelectionRange` rather than `select()`, which focuses
+    // the textarea with scrolling.
     const x = window.scrollX
     const y = window.scrollY
     const active = document.activeElement

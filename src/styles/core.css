@@ -4,6 +4,8 @@
  * deliberately unlayered so it wins over the theme's `@layer` styles.
  */
 
+/* The scroll container for equations wider than the page, and the owner of
+   display math's vertical rhythm — the engine sheets zero out their own. */
 .vpm-display {
   margin: 16px 0;
   overflow-x: auto;
@@ -26,11 +28,10 @@
   vertical-align: middle;
 }
 
-/* Double-click / long-press selection hint: SVG-rendered math (MathJax)
-   gets no native ::selection paint, so the selected formula is marked
-   explicitly. An absolutely positioned overlay (not a background) so the
-   paint covers the full bounding box even on inline wrappers, whose
-   background would only cover the line-box strip of a tall expression. */
+/* Selection mark for math the browser paints no ::selection on (MathJax's
+   SVG output), set by double-click and long-press. An absolutely positioned
+   overlay rather than a background: a background covers only the line-box
+   strip of a tall inline expression, not its bounding box. */
 .vpm-selected {
   position: relative;
   /* own stacking context, so the z-index:-1 overlay stays right behind the
@@ -41,9 +42,9 @@
   border-radius: 4px;
 }
 
-/* An inline wrapper must become inline-block while marked: as `inline`, its
-   box (and therefore the overlay) is only the line-box strut, not the full
-   height of a tall expression. Baselines are preserved. */
+/* A marked inline wrapper needs a real box: as `inline`, the element — and so
+   the overlay — is only the line-box strut, not the height of a tall
+   expression. `inline-block` gives it one and keeps the baseline. */
 .vpm-inline.vpm-selected {
   display: inline-block;
 }
@@ -90,6 +91,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
+/* The overlay itself. Transparent to the pointer, so marking a formula never
+   swallows a click meant for what sits under it. */
 .vpm-selected::after {
   content: '';
   position: absolute;

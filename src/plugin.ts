@@ -3,6 +3,7 @@ import { createBracketInlineRule, createDollarInlineRule } from './parser/inline
 import { createWrapperRenderer } from './render.ts'
 import type { MathMarkdownIt, MathPluginOptions, MathToken } from './types.ts'
 
+/** markdown-it's `alt` list: the constructs a math block may interrupt. */
 const BLOCK_ALT = ['paragraph', 'reference', 'blockquote', 'list']
 
 function asTextToken(token: MathToken): MathToken {

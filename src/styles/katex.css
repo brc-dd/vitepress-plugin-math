@@ -15,7 +15,9 @@
   -webkit-user-select: none;
 }
 
-/* Keep display math scrolling inside our wrapper instead of overflowing. */
+/* KaTeX gives `.katex-display` a `1em 0` margin of its own, which would double
+   up with the wrapper's. The wrapper owns the vertical rhythm and the
+   horizontal scrolling. */
 .vpm-display .katex-display {
   margin: 0;
 }

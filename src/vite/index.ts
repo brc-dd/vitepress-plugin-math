@@ -13,6 +13,13 @@ import type { MathMarkdownIt, MathRenderer } from '../types.ts'
 export const MATH_STYLES_ID = 'virtual:vitepress-plugin-math.css'
 
 const RESOLVED_STYLES_ID = '\0' + MATH_STYLES_ID
+
+/**
+ * Where the CHTML webfonts are served. Duplicated from `MATHJAX_FONT_URL` in
+ * `engines/mathjax` — importing it would pull the engine into every build —
+ * and the two must stay identical: that module emits this prefix into the
+ * stylesheet these plugins then read back.
+ */
 const FONT_URL = '/vpm-fonts/mathjax'
 
 /** Query the theme wrapper imports the real theme entry under. */
@@ -119,7 +126,6 @@ function mathJaxFontPackageDir(pkg: string): FontPackage | null {
   }
 }
 
-/** The installed KaTeX version, or null when katex is not installed. */
 function katexVersion(): string | null {
   try {
     const { version } = requireSelf('katex/package.json') as { version?: string }
@@ -153,7 +159,7 @@ function usesWebFonts(config: ResolvedConfigLike): boolean {
 const themeEntries = new Map<string, string>()
 
 /**
- * The module VitePress's app imports as `@theme/index`: the site's own theme
+ * The module VitePress's app imports as `\@theme/index`: the site's own theme
  * entry, or the default theme's when the site has none. Keyed on the
  * directory, which is what makes it follow a theme added or removed
  * mid-session — VitePress repoints `themeDir` and reloads the page.
@@ -177,8 +183,9 @@ function themeEntry(themeDir: string): string {
 }
 
 /**
- * The stylesheets an engine's output needs, on top of the wrapper styles in
- * `core.css` (which the engine entries import themselves).
+ * The stylesheets an engine's output needs, wrapper styles included. The
+ * engine style entries import `core.css` themselves; engines without an entry
+ * of their own name it here.
  */
 function engineStyles(engine: string): string[] {
   switch (engine) {
@@ -244,7 +251,7 @@ const chainedMarkdown = new WeakSet<MarkdownConfigLike>()
 
 /**
  * Chains the markdown-it plugin onto a VitePress `markdown` options object,
- * ahead of whatever `config` hook was already there.
+ * ahead of whatever `config` hook is already there.
  *
  * A resolution failure must not escape the hook: VitePress runs it while
  * constructing the dev server, including on a config-reload restart, where a
@@ -415,9 +422,9 @@ export function mathStylesPlugin(renderer: RendererSource): VitePluginObject[] {
 
     async generateBundle(_options: unknown, bundle: Record<string, unknown>) {
       // KaTeX's stylesheet lists woff/ttf fallbacks after each woff2 source.
-      // No supported browser fetches them, but Vite still emits ~800 KB of
-      // font files per deploy — strip the fallback sources from the CSS and
-      // drop the orphaned assets.
+      // No supported browser fetches them, yet Vite emits ~800 KB of font
+      // files per deploy for them. Drop the assets here; `writeBundle` strips
+      // the references that would then dangle.
       for (const [key, file] of Object.entries(bundle)) {
         const asset = file as { type?: string; fileName?: string; source?: unknown }
         if (asset.type !== 'asset' || !asset.fileName) continue
@@ -449,9 +456,9 @@ export function mathStylesPlugin(renderer: RendererSource): VitePluginObject[] {
     },
 
     async writeBundle(options: { dir?: string }) {
-      // VitePress emits its final concatenated stylesheet from a post-ordered
-      // plugin after our generateBundle ran, so the dangling references to
-      // the dropped fallbacks are cleaned on disk.
+      // Cleaning the references on disk is the only option: VitePress
+      // concatenates its final stylesheet from a post-ordered plugin, after
+      // `generateBundle` has already dropped the font files.
       const outDir = options.dir
       if (!outDir) return
       const { readdir, readFile, writeFile } = await import('node:fs/promises')
@@ -612,6 +619,8 @@ export default math
  */
 export function withMath<T extends object>(config: T, options: ApplyMathOptions = {}): T {
   const renderer = resolveRenderer(options)
+  // As in `math()`: mark the rejection handled so it cannot end the process
+  // before the first hook awaits it. Every awaiter still sees it.
   renderer.catch(() => {})
 
   const cfg = config as VitePressConfigLike

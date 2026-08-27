@@ -1,7 +1,7 @@
 /**
  * Structural typings for the slice of markdown-it we touch.
  *
- * markdown-it v14 ships types via `@types/markdown-it` while v15 bundles its
+ * markdown-it v14 ships types via `\@types/markdown-it` while v15 bundles its
  * own with a different import surface (`markdown-it/lib/*` is gone). Typing
  * against a minimal structural contract keeps the plugin compatible with the
  * instance VitePress hands us (its bundled markdown-it) on both majors.
@@ -121,7 +121,10 @@ export interface MathRenderContext {
  * \@webc.site/math) do their async setup in their factory and render sync.
  */
 export interface MathRenderer {
-  /** Engine identifier used in class names and diagnostics (e.g. `katex`). */
+  /**
+   * Engine identifier (e.g. `katex`). The Vite plugin keys off it to pick the
+   * stylesheets it injects, and to start `useTemmlRefs()` under Temml.
+   */
   name: string
   /**
    * Render one TeX expression to an HTML string. The result is embedded in
@@ -142,7 +145,11 @@ export interface MathRenderer {
    * plugin.
    */
   stylesheet?(): string
-  /** Release resources at the end of a build (e.g. MathJax worker threads). */
+  /**
+   * Release resources at the end of a build (e.g. MathJax worker threads).
+   * The caller owns this: `applyMath` hands the renderer back so a custom
+   * integration can call it. The Vite plugin never does.
+   */
   finalize?(): void | Promise<void>
 }
 

@@ -83,9 +83,9 @@ export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRu
     while ((matchStart = src.indexOf('`', matchEnd)) !== -1 && matchStart < posMax) {
       matchEnd = matchStart + 1
       while (matchEnd < posMax && src.charCodeAt(matchEnd) === BACKTICK) matchEnd++
+      if (matchEnd - matchStart !== openerLength) continue
       // The closing run and its `$` must both sit inside the current inline
       // scope — never scan across a link/image label boundary.
-      if (matchEnd - matchStart !== openerLength) continue
       if (matchEnd >= posMax || src.charCodeAt(matchEnd) !== DOLLAR) continue
 
       if (!silent) {

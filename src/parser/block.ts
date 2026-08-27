@@ -68,11 +68,11 @@ function createBlockRule(tokenMarkup: '$$' | '\\[', options: BlockRuleOptions): 
     // not the surrounding block indent.
     const indent = state.sCount[startLine]!
 
-    // Single-line form: `$$content$$` with nothing after the closer.
     let contentParts: string[] | null = null
     let label: string | undefined
     let lastLine = startLine
 
+    // Single-line form: `$$content$$` with nothing after the closer.
     const single =
       firstRest.length >= closer.length ? matchCloser(firstRest, closer, allowLabel) : null
     if (single) {

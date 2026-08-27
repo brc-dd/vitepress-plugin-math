@@ -7,7 +7,7 @@ import {
   type TestMdOptions,
 } from './helpers.ts'
 
-/** Fixture file → the plugin options its expected output was written for. */
+/** Fixture file → the plugin options its expected output assumes. */
 const SUITES: [file: string, options: TestMdOptions][] = [
   ['inline-dollars', {}],
   ['dollar-backtick', {}],
