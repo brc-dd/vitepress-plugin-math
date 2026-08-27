@@ -4,8 +4,10 @@ packages:
 
 minimumReleaseAge: 1440
 minimumReleaseAgeIgnoreMissingTime: false
+minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 525600
+trustLockfile: false
 blockExoticSubdeps: true
 
 strictDepBuilds: true

@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# No token scopes by default; every job grants only what it needs.
+permissions: {}
+
+# Queue, never cancel: a publish must not be killed mid-flight.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TZ: UTC
+  LANG: en_US.UTF-8
+  FORCE_COLOR: '1'
+
+jobs:
+  # Release PR from conventional commits; a `v<version>` tag + GitHub release on merge. Release PRs
+  # opened with GITHUB_TOKEN don't trigger ci.yml — pass a PAT via `with: token` if they need checks.
+  release-please:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+
+  # Split from publish so dependency install never runs where an OIDC token can be minted; caches
+  # off so a poisoned entry can't reach a shipped artifact.
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm and node
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          cache: false
+
+      # tsdown runs publint + attw in-build, so the published shape stays gated here too.
+      - name: Build
+        run: pnpm build
+
+      - name: Upload build output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  # Trusted publishing (OIDC): tokenless, provenance automatic. `install: false` keeps node_modules
+  # — and every lifecycle script in it — out of the job holding the id-token; `publishConfig.exports`
+  # remaps the subpaths to the `dist/` tree restored from the build job.
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Named in the npm trusted-publisher config; required reviewers gate publishes on a human.
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm and node
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          cache: false
+          install: false
+
+      - name: Download build output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist
+
+      # MAINTAINER: this step fails until npmjs.com lists brc-dd/vitepress-plugin-math +
+      # `.github/workflows/release.yml` + the `npm` environment as a trusted publisher for
+      # `vitepress-plugin-math` (Settings → Trusted publishers on the package page).
+      - name: Publish to npm
+        run: pnpm publish --no-git-checks --ignore-scripts
+
+      # The tag and GitHub release already exist at this point, so say what is missing rather than
+      # leaving a bare 404 from the registry as the only signal.
+      - name: Explain a failed publish
+        if: failure()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ### npm publish failed
+
+          The release tag and GitHub release were created; only the npm upload failed.
+          If this is the first release, configure trusted publishing on npmjs.com for
+          `vitepress-plugin-math`, pointing at this repository,
+          `.github/workflows/release.yml` and the `npm` environment — then re-run this job.
+          EOF
+          echo '::error title=npm publish failed::Configure npm trusted publishing for vitepress-plugin-math, then re-run this job.'

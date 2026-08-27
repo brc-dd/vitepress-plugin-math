@@ -1,0 +1,49 @@
+version: 2
+
+updates:
+  # The workflows pin actions by commit SHA; dependabot is what keeps those pins current, rewriting
+  # both the SHA and its `# vX.Y.Z` comment. One grouped PR a week.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  # Runtime deps are all optional peers with deliberate ranges, so npm updates are scoped to
+  # devDependencies and run monthly: enough to catch a stale toolchain, quiet enough to leave the
+  # deliberate bumps to a human. Minor/patch arrive as one grouped PR; majors come in one at a time.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    versioning-strategy: increase
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+    allow:
+      - dependency-type: development
+    ignore:
+      # patches/ is keyed to the exact alpha; any bump orphans the patch.
+      - dependency-name: vitepress
+      # A major here would leave the peerDependencies range these engines are pinned to.
+      - dependency-name: katex
+        update-types: [version-update:semver-major]
+      - dependency-name: mathjax
+        update-types: [version-update:semver-major]
+      - dependency-name: temml
+        update-types: [version-update:semver-major]
+      - dependency-name: '@webc.site/math'
+        update-types: [version-update:semver-major]
+    groups:
+      dev-dependencies:
+        patterns: ['*']
+        update-types: [minor, patch]
