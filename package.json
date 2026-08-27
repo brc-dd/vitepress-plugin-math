@@ -26,6 +26,7 @@
   },
   "funding": "https://github.com/sponsors/brc-dd",
   "files": [
+    "ACKNOWLEDGEMENTS.md",
     "dist"
   ],
   "type": "module",

@@ -1,6 +1,12 @@
 /**
  * Style entry for the KaTeX engine: upstream stylesheet (Vite resolves the
  * font URLs from the katex package — self-hosted, no CDN) + our fixes.
+ *
+ * KaTeX's stylesheet and fonts are `@import`ed from the consumer's own `katex`
+ * installation; nothing from KaTeX is vendored or adapted here, so no KaTeX
+ * notice obligation attaches to this file. KaTeX itself is MIT, Copyright (c)
+ * 2013-2020 Khan Academy and other contributors, and its fonts are under SIL
+ * OFL 1.1; both travel with the `katex` package. See ACKNOWLEDGEMENTS.md §3.
  */
 
 @import 'katex/dist/katex.min.css';

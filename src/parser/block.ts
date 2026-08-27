@@ -1,3 +1,14 @@
+/**
+ * Portions of this file are adapted from markdown-it-math, Copyright (c) 2015
+ * Rúnar Berg Baugsson Sigríðarson (longest-first delimiter precedence and the
+ * closing-line indentation guards), and from markdown-it-dollarmath,
+ * Copyright (c) 2021 Chris Sewell (blank-line rejection inside a `$$` block
+ * and the `$$…$$ (label)` trailing-label syntax, which originates in
+ * MyST-Parser, Copyright (c) 2020 ExecutableBookProject) — all licensed under
+ * the MIT License. See ACKNOWLEDGEMENTS.md §1.1 for scope and the reproduced
+ * license text.
+ */
+
 import type { MathBlockRule } from '../types.ts'
 import { BACKSLASH, BRACKET_OPEN, DOLLAR, isEscaped } from './chars.ts'
 

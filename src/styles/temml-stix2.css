@@ -6,8 +6,10 @@
  * download anything. Everything else about the two sheets is the same — pick
  * one, not both.
  *
- * Adapted from Temml's `dist/Temml-STIX2.css` — MIT © 2020 Ron Kok
- * (https://github.com/ronkok/Temml). Changes from upstream:
+ * Portions of this file are adapted from Temml's `dist/Temml-STIX2.css`,
+ * Copyright (c) 2020 Ron Kok (https://github.com/ronkok/Temml), licensed under
+ * the MIT License. This notice and the change log below must be retained in
+ * any redistribution of this file. Changes from upstream:
  *
  * - Imports our `core.css` and drops the doubled display-math margin inside
  *   the plugin's scroll wrapper.
@@ -18,10 +20,13 @@
  * - No colors or backgrounds beyond `currentColor`, so the whole sheet
  *   inherits VitePress's light/dark tokens instead of fighting them.
  *
- * STIX Two Math is under the SIL Open Font License 1.1 with the Reserved Font
- * Name "TM Math" — note that the RFN is "TM Math", not "STIX", so the family
- * name here is fine. It is vendored byte-for-byte from upstream's own WOFF2
- * build; provenance and license text live in `../fonts/MANIFEST.md` and
+ * The font this sheet loads is not covered by this package's MIT license.
+ * STIX Two Math, Copyright 2001-2021 The STIX Fonts Project Authors, is under
+ * the SIL Open Font License 1.1 with the Reserved Font Name "TM Math". The
+ * vendored WOFF2 is upstream's own build, copied byte-for-byte, so it is an
+ * Original Version and OFL 1.1 clause 3 is not engaged; the family named below
+ * is `STIX Two Math`, which is not the Reserved Font Name. Provenance and
+ * license text are in `../fonts/MANIFEST.md` and
  * `../fonts/OFL-STIXTwoMath.txt`.
  */
 

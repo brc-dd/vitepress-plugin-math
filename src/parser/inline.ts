@@ -19,9 +19,10 @@ export interface InlineRuleOptions {
 /**
  * `$…$`, mid-paragraph `$$…$$`, and GitHub's `` $`…`$ ``.
  *
- * Parser lineage: the charCode scanning approach descends from
- * markdown-it-katex (MIT © 2016 Waylon Flinn) via \@mdit/plugin-tex
- * (MIT © 2022-present Mr.Hope) — see ACKNOWLEDGEMENTS.md.
+ * Portions of this file are adapted from markdown-it-katex, Copyright (c) 2016
+ * Waylon Flinn, and from \@mdit/plugin-tex, Copyright (C) 2022 - PRESENT by
+ * MrHope — both licensed under the MIT License. See ACKNOWLEDGEMENTS.md §1.1
+ * for what was taken from each and for the reproduced license text.
  */
 export function createDollarInlineRule(options: InlineRuleOptions): MathInlineRule {
   const { allowInlineWithSpace, inlineDisplay } = options

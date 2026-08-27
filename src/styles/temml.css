@@ -1,8 +1,10 @@
 /**
  * Style entry for the Temml engine, with Latin Modern Math self-hosted.
  *
- * Adapted from Temml's `dist/Temml-Latin-Modern.css` — MIT © 2020 Ron Kok
- * (https://github.com/ronkok/Temml). Changes from upstream:
+ * Portions of this file are adapted from Temml's `dist/Temml-Latin-Modern.css`,
+ * Copyright (c) 2020 Ron Kok (https://github.com/ronkok/Temml), licensed under
+ * the MIT License. This notice and the change log below must be retained in
+ * any redistribution of this file. Changes from upstream:
  *
  * - Imports our `core.css` and drops the doubled display-math margin inside
  *   the plugin's scroll wrapper.
@@ -14,10 +16,14 @@
  * - No colors or backgrounds beyond `currentColor`, so the whole sheet
  *   inherits VitePress's light/dark tokens instead of fighting them.
  *
- * Latin Modern Math is under the GUST Font License (LPPL 1.3c). It is vendored
- * unmodified apart from the OTF-to-WOFF2 container conversion; the change
- * notice, provenance and license text live in `../fonts/MANIFEST.md`,
- * `../fonts/GUST-FONT-LICENSE.txt` and `scripts/fonts.py`.
+ * The font this sheet loads is not covered by this package's MIT license.
+ * Latin Modern Math, Copyright 2012--2014 for TeX Gyre math extensions by
+ * B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX Users
+ * Groups), is under the GUST Font License, which places it under LPPL 1.3c or
+ * later. The vendored WOFF2 is a Derived Work under that license: the only
+ * change is the OTF-to-WOFF2 container conversion. The LPPL 1.3c clause 6b
+ * change notice, the full provenance record and the license text are in
+ * `../fonts/MANIFEST.md` and `../fonts/GUST-FONT-LICENSE.txt`.
  */
 
 @import './core.css';

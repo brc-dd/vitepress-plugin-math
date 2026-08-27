@@ -1,14 +1,18 @@
 <!--
-Test cases adapted (inputs only) from, and credited to:
+Test-case inputs adapted from the works below; expected output is not.
+Full third-party notices: ACKNOWLEDGEMENTS.md §1.4.
+
+Adapted from:
   - executablebooks/markdown-it-dollarmath, tests/fixtures/basic.md
-    (MIT (c) 2021 Chris Sewell; derived from ExecutableBooks/MyST-Parser,
-    BSD-3-Clause (c) ExecutableBooks)
+    (MIT (c) 2021 Chris Sewell; derived from executablebooks/MyST-Parser,
+    MIT (c) 2020 ExecutableBookProject)
   - microsoft/vscode-markdown-it-katex, test/fixtures/default.txt
-    (MIT (c) Microsoft Corporation)
+    (MIT (c) Microsoft Corporation; (c) 2018 Takahiro Ethan Ikeuchi
+    @iktakahiro; (c) 2016 Waylon Flinn)
   - mdit-plugins/plugin-tex, __tests__/tex.spec.ts
-    (MIT (c) 2022-present Mr.Hope)
+    (MIT (C) 2022 - PRESENT by MrHope)
   - runarberg/markdown-it-math, test/test.js
-    (MIT (c) 2015 Runar Berg Baugsson Sigridarson)
+    (MIT (c) 2015 Rúnar Berg Baugsson Sigríðarson)
 
 Expected output is THIS plugin's (it deliberately differs from every upstream
 listed above -- see DESIGN.md "Parser design"). Math is rendered by the probe

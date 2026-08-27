@@ -127,8 +127,17 @@ has the full comparison, including per-engine options.
 
 ## License
 
-[MIT](LICENSE) © Divyansh Singh. Vendored fonts keep their own licenses (GUST Font License,
-SIL OFL 1.1) — see [`src/fonts/MANIFEST.md`](src/fonts/MANIFEST.md); they are regenerated
-from their canonical upstreams by [`scripts/fonts.py`](scripts/fonts.py)
-(`uv run scripts/fonts.py`). Adapted code and ported test corpora are credited in
-[ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
+[MIT](LICENSE), Copyright (c) 2026-present Divyansh Singh.
+
+The vendored fonts are **not** covered by that grant: Latin Modern Math is under the GUST
+Font License and STIX Two Math under SIL OFL 1.1, each shipped with its own license text and
+a clause-by-clause provenance record in [`src/fonts/MANIFEST.md`](src/fonts/MANIFEST.md).
+They are regenerated from their canonical upstreams by
+[`scripts/fonts.py`](scripts/fonts.py) (`uv run scripts/fonts.py`), never edited by hand.
+
+The rendering engines are optional peer dependencies and are never bundled, vendored or
+adapted here, so they reach you from their own publishers under their own licenses.
+
+[ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) is the full third-party notice register — adapted
+code, ported test corpora, font notices and the reproduced license texts. It ships inside the
+npm package.

@@ -1,8 +1,11 @@
 <!--
-Test cases adapted (inputs only) from, and credited to:
+Test-case inputs adapted from the works below; expected output is not.
+Full third-party notices: ACKNOWLEDGEMENTS.md §1.4.
+
+Adapted from:
   - executablebooks/markdown-it-dollarmath, tests/fixtures/basic.md
-    (MIT (c) 2021 Chris Sewell; derived from ExecutableBooks/MyST-Parser,
-    BSD-3-Clause (c) ExecutableBooks)
+    (MIT (c) 2021 Chris Sewell; derived from executablebooks/MyST-Parser,
+    MIT (c) 2020 ExecutableBookProject)
 
 Expected output is THIS plugin's (it deliberately differs from every upstream
 listed above -- see DESIGN.md "Parser design"). Math is rendered by the probe

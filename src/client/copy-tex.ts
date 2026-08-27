@@ -3,12 +3,17 @@
  * plain-text clipboard gets the original TeX source in `$…$` / `$$…$$`
  * delimiters instead of the (garbled) rendered glyphs.
  *
- * Algorithm adapted from KaTeX's copy-tex extension (MIT © 2013–2020 Khan
- * Academy, extension by Eric Demaine) and Temml's variant (MIT © 2020 Ron
- * Kok) — see ACKNOWLEDGEMENTS.md — with fixes: the live selection range is
- * cloned before expansion, root selectors are probed outermost-first,
- * annotations are matched by encoding, display math keeps block boundaries,
- * and display delimiters are actually used.
+ * Portions of this file are adapted from the `copy-tex` contrib extension of
+ * KaTeX, Copyright (c) 2013-2020 Khan Academy and other contributors,
+ * licensed under the MIT License; that extension was contributed by Erik
+ * Demaine (KaTeX PR #813). Its MathML form in Temml's `contrib/copy-tex`,
+ * Copyright (c) 2020 Ron Kok, MIT, was also consulted. See
+ * ACKNOWLEDGEMENTS.md §1.2 for scope and the reproduced license text.
+ *
+ * This is a rewrite, not a copy: the live selection range is cloned before
+ * expansion, root selectors are probed outermost-first, annotations are
+ * matched by encoding, display math keeps block boundaries, and display
+ * delimiters are actually used.
  */
 
 export interface CopyTexDelimiters {

@@ -143,10 +143,12 @@ actually in play.
 
 ### Font licensing
 
-Vendored fonts are the **unmodified upstream fonts**. Latin Modern Math is converted from OTF
-to WOFF2 and nothing else; the conversion asserts that glyphs, metrics, `name` records, cmap
-coverage and the MATH table are identical to the source. STIX Two Math is copied byte for
-byte from upstream's own WOFF2 build.
+Neither vendored font is subsetted or otherwise edited. STIX Two Math is copied byte for byte
+from upstream's own WOFF2 build, so it is an **Original Version** under OFL 1.1. Latin Modern
+Math is converted from OTF to WOFF2 and nothing else — a container change, which still makes
+it a **Derived Work** under the GUST Font License's LPPL 1.3c terms, disclosed as such in the
+manifest; the conversion asserts that glyphs, metrics, `name` records, cmap coverage and the
+MATH table are identical to the source.
 
 That is a deliberate choice, not laziness about subsetting. Subsetting a math font barely
 pays: MathML Core's user-agent stylesheet maps every single-character `<mi>` into the

@@ -166,8 +166,9 @@ Equation numbering is a pure CSS counter, so it resets per page with no JavaScri
 them in client-side, so the plugin starts `useTemmlRefs()` for you whenever the engine is
 Temml. That import is a 1 KB standalone module, not the full engine.
 
-Two math fonts are vendored with the plugin, both unmodified upstream builds with their
-licenses tracked in the repo:
+Two math fonts are vendored with the plugin. Neither is subsetted or edited; each ships with
+its own license text and provenance record, and neither is covered by this package's MIT
+license — see [credits](/about/credits):
 
 - **Latin Modern Math** — the default, and the TeX look. Used by
   `vitepress-plugin-math/styles/temml.css`.
@@ -204,7 +205,9 @@ values that MathML Core ignores, so `\mathbb{R}` renders as a plain `R`. Use it 
 math on your site is simple and every kilobyte counts; otherwise Temml gives you real MathML
 with none of these caveats.
 
-`@webc.site/math` is MulanPSL-2.0 licensed, not MIT — see [credits](/about/credits).
+`@webc.site/math` is MulanPSL-2.0 licensed, not MIT. This plugin integrates it through its
+public API only and never bundles or adapts it, so you install it yourself and receive it
+from its own publisher under that license — see [credits](/about/credits).
 
 ## Custom engines
 
