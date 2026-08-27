@@ -1,4 +1,5 @@
 packages:
+  - 'docs'
   - 'examples/*'
 
 minimumReleaseAge: 1440

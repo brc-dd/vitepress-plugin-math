@@ -75,11 +75,14 @@
   },
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc -p . && vue-tsc --noEmit -p examples/docs",
+    "typecheck": "tsc -p . && vue-tsc --noEmit -p docs && vue-tsc --noEmit -p examples/docs",
     "format": "prettier --experimental-cli --write .",
     "format:check": "prettier --experimental-cli --check .",
-    "docs:dev": "pnpm -C examples/docs dev",
-    "docs:build": "pnpm -C examples/docs build",
+    "docs:dev": "pnpm -C docs dev",
+    "docs:build": "pnpm -C docs build",
+    "docs:preview": "pnpm -C docs preview",
+    "examples:dev": "pnpm -C examples/docs dev",
+    "examples:build": "pnpm -C examples/docs build",
     "test": "vitest",
     "test:unit": "vitest run"
   },

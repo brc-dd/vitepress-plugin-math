@@ -45,5 +45,8 @@ jobs:
       - name: Test
         run: pnpm test:unit
 
-      - name: Build example docs
+      - name: Build docs site
         run: pnpm docs:build
+
+      - name: Build example docs
+        run: pnpm examples:build

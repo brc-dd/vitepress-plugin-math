@@ -72,6 +72,22 @@ importers:
         specifier: ^3.3.11
         version: 3.3.11(typescript@6.0.3)
 
+  docs:
+    dependencies:
+      vitepress-plugin-math:
+        specifier: link:..
+        version: link:..
+    devDependencies:
+      katex:
+        specifier: ^0.18.4
+        version: 0.18.4
+      vitepress:
+        specifier: 2.0.0-alpha.19
+        version: 2.0.0-alpha.19(patch_hash=9e220b17be02d89eeed3efa4e1f4b3ddd61c296375ed0a3e69acfabf81e1d51a)(@types/node@26.3.0)(postcss@8.5.26)(typescript@6.0.3)
+      vue:
+        specifier: ^3.5.41
+        version: 3.5.41(typescript@6.0.3)
+
   examples/docs:
     dependencies:
       vitepress-plugin-math:

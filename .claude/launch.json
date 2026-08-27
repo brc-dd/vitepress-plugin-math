@@ -4,6 +4,12 @@
     {
       "name": "docs",
       "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "docs", "dev", "--port", "5174", "--strictPort", "--host"],
+      "port": 5174
+    },
+    {
+      "name": "examples",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": ["-C", "examples/docs", "dev", "--port", "5173", "--strictPort", "--host"],
       "port": 5173
     }
