@@ -31,16 +31,39 @@ interface EngineOptionBags {
   temml?: TemmlRendererOptions
 }
 
+/** What the Vite plugin injects on its own, over and above the parsing. */
+interface InjectionOptions {
+  /**
+   * Serve the site's theme entry wrapped in a module that imports the
+   * engine's stylesheets and starts the client composables (`useCopyTex()`,
+   * and `useTemmlRefs()` under Temml) — the whole point of `math()` needing
+   * no theme file. Turn it off to wire those yourself.
+   * @default true
+   */
+  inject?: boolean
+  /**
+   * Import the engine's stylesheets into that wrapper. Turning this off
+   * keeps the composables and leaves the styles to you — one import of
+   * `vitepress-plugin-math/styles/katex.css`, `…/styles/temml.css`, or
+   * `virtual:vitepress-plugin-math.css` for MathJax.
+   * @default true
+   */
+  styles?: boolean
+}
+
 /**
  * Parser options plus the engine choice and that engine's own option bag —
  * picking an `engine` narrows the accepted bag to the matching one, so editor
- * completion offers exactly the options that apply.
+ * completion offers exactly the options that apply. `inject` and `styles`
+ * steer the Vite plugin rather than the parsing, and are ignored by
+ * {@link applyMath}.
  *
  * The bag types come from the engine adapters, which type against the optional
  * engine packages. Projects that turn `skipLibCheck` off therefore need the
  * configured engine installed to typecheck.
  */
 export type ApplyMathOptions = MathOptions &
+  InjectionOptions &
   (
     | ({
         /**

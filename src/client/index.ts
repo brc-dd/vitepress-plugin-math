@@ -30,11 +30,14 @@ export interface UseCopyTexOptions extends CopyTexOptions {
  * Copy-as-TeX for rendered math: selections containing formulas put the
  * original TeX (in `$…$`/`$$…$$`) on the plain-text clipboard.
  *
+ * The Vite plugin calls this for you — `math()` wraps the site's theme entry
+ * and starts it there. Wire it yourself only under `inject: false`, or
+ * outside VitePress.
+ *
  * SSR-safe — no browser globals at import time; delegated `document`
- * listeners installed in `onMounted`, so they survive SPA navigation. Call
- * it from a wrapping Layout component's `<script setup>` (VitePress's
- * `Theme.setup()` is deprecated, and `enhanceApp` runs during the SSR
- * build):
+ * listeners installed in `onMounted`, so they survive SPA navigation. Called
+ * by hand, it belongs in a wrapping Layout component's `<script setup>`
+ * (`enhanceApp` runs during the SSR build, too early for composables):
  *
  * ```vue
  * <script setup>
@@ -100,6 +103,9 @@ export function useCopyTex(options: UseCopyTexOptions = {}): void {
  * equation numbers. Imports the 1 KB standalone module (not the full
  * engine), re-running on every page's content update. Only needed with the
  * Temml engine, and only when pages use `\ref`/`\eqref`.
+ *
+ * The Vite plugin calls this for you under the Temml engine; wire it yourself
+ * only under `inject: false`, or outside VitePress.
  */
 export function useTemmlRefs(): void {
   onContentUpdated(async () => {

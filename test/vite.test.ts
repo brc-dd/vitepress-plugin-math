@@ -1,8 +1,14 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import MarkdownIt from 'markdown-it'
+import { afterAll, afterEach, describe, expect, it } from 'vitest'
+import type { ApplyMathOptions } from '../src/index.ts'
 import type { MathRenderer } from '../src/types.ts'
-import { MATH_STYLES_ID, mathStylesPlugin } from '../src/vite/index.ts'
+import { MATH_STYLES_ID, math, mathStylesPlugin, withMath } from '../src/vite/index.ts'
+import { createProbeRenderer } from './helpers.ts'
 
 const RESOLVED_STYLES_ID = '\0' + MATH_STYLES_ID
 
@@ -278,5 +284,263 @@ describe('KaTeX stylesheet swap', () => {
     const [katex] = resolved(true)
     const code = katex.transform(KATEX_CSS, OWN_KATEX_CSS_ID)?.code ?? ''
     expect(code).toMatch(/katex@\d+\.\d+\.\d+\/dist\/katex\.min\.css/)
+  })
+})
+
+/** The injector's hooks, on plugin objects the factory types structurally. */
+interface InjectPlugin {
+  name: string
+  enforce: string
+  configResolved(config: unknown): void
+  resolveId(source: string): string | undefined
+  load(id: string): Promise<string | undefined>
+}
+
+/** The slice of a VitePress site config the injector reads and writes. */
+interface SiteStub {
+  themeDir?: string
+  markdown?: { config?: (md: unknown) => unknown }
+}
+
+const themeDirs: string[] = []
+
+/** A throwaway theme directory holding the given entry files. */
+function fakeThemeDir(...files: string[]): string {
+  const dir = mkdtempSync(join(tmpdir(), 'vpm-theme-'))
+  themeDirs.push(dir)
+  for (const file of files) writeFileSync(join(dir, file), 'export default {}\n')
+  return dir
+}
+
+afterAll(() => {
+  for (const dir of themeDirs) rmSync(dir, { recursive: true, force: true })
+})
+
+/** Plugin names in the order the factory returns them. */
+function names(plugins: { name: string }[]): string[] {
+  return plugins.map((plugin) => plugin.name)
+}
+
+/** The injector out of a full plugin set, with the hooks under test typed. */
+function injector(options: ApplyMathOptions): InjectPlugin {
+  return math(options)[0] as InjectPlugin
+}
+
+/** An injector that has already seen the given site config. */
+function mounted(options: ApplyMathOptions, site: SiteStub = {}): InjectPlugin {
+  const plugin = injector(options)
+  plugin.configResolved({ vitepress: site })
+  return plugin
+}
+
+/** Options naming an engine that resolves to a renderer with the given name. */
+function engine(name: string): ApplyMathOptions {
+  return { engine: createProbeRenderer(name) }
+}
+
+describe('math() plugin set', () => {
+  it('adds the injector to the styles pair', () => {
+    expect(names(math(engine('probe')))).toEqual([
+      'vitepress-plugin-math:inject',
+      'vitepress-plugin-math:katex-cdn',
+      'vitepress-plugin-math:styles',
+    ])
+  })
+
+  it('drops the injector under `inject: false`', () => {
+    expect(names(math({ ...engine('probe'), inject: false }))).toEqual([
+      'vitepress-plugin-math:katex-cdn',
+      'vitepress-plugin-math:styles',
+    ])
+  })
+
+  it('orders the injector ahead of VitePress, which reads the config it writes', () => {
+    expect(injector(engine('probe')).enforce).toBe('pre')
+  })
+})
+
+describe('markdown wiring', () => {
+  it('refuses to run outside VitePress', () => {
+    expect(() => injector(engine('probe')).configResolved({})).toThrow(/must run inside VitePress/)
+  })
+
+  it('chains onto a site config that has no markdown options at all', async () => {
+    const site: SiteStub = {}
+    mounted(engine('probe'), site)
+    await site.markdown?.config?.(new MarkdownIt())
+    const md = new MarkdownIt()
+    await site.markdown?.config?.(md)
+    expect(md.render('$x$')).toContain('[I:x]')
+  })
+
+  it('registers ahead of the config hook that was already there', async () => {
+    const seen: string[] = []
+    const site: SiteStub = {
+      markdown: { config: (md) => void seen.push((md as MarkdownIt).render('$x$')) },
+    }
+    mounted(engine('probe'), site)
+    await site.markdown?.config?.(new MarkdownIt())
+    expect(seen[0]).toContain('[I:x]')
+  })
+
+  it('leaves markdown options a second plugin already chained alone', () => {
+    const site: SiteStub = {}
+    mounted(engine('one'), site)
+    const chained = site.markdown?.config
+    mounted(engine('two'), site)
+    expect(site.markdown?.config).toBe(chained)
+  })
+
+  it('registers the rules even when the engine failed to resolve', async () => {
+    const site: SiteStub = {}
+    mounted({ engine: 'nope' } as unknown as ApplyMathOptions, site)
+    const md = new MarkdownIt()
+    // The hook itself survives — VitePress builds the dev server around it —
+    // and the failure is rethrown per expression instead, at render time.
+    await expect(site.markdown?.config?.(md)).resolves.not.toThrow()
+    expect(() => md.render('$x$')).toThrow(/Unknown engine/)
+  })
+})
+
+describe('theme wrapper', () => {
+  it('serves the wrapper for the theme entry, whatever dev appends to the id', async () => {
+    const dir = fakeThemeDir('index.ts')
+    const plugin = mounted(engine('probe'), { themeDir: dir })
+    const entry = JSON.stringify(`${dir}/index.ts?vpm-real`)
+    for (const id of [`${dir}/index.ts`, `${dir}/index.ts?v=abc`, `${dir}/index.ts?t=1#x`]) {
+      const code = (await plugin.load(id)) ?? ''
+      expect(code).toContain(`import Theme from ${entry}`)
+      expect(code).toContain(`export * from ${entry}`)
+      expect(code).toContain('...Theme,')
+      expect(code).toContain('useCopyTex()')
+    }
+  })
+
+  it('hands the marked id back to Vite, which loads the real file', async () => {
+    const dir = fakeThemeDir('index.ts')
+    const plugin = mounted(engine('probe'), { themeDir: dir })
+    const source = `${dir}/index.ts?vpm-real`
+    expect(plugin.resolveId(source)).toBe(source)
+    expect(plugin.resolveId(`${dir}/index.ts`)).toBeUndefined()
+    await expect(plugin.load(source)).resolves.toBeUndefined()
+    await expect(plugin.load(`${source}&t=1`)).resolves.toBeUndefined()
+  })
+
+  it('runs whatever setup the theme already had', async () => {
+    const dir = fakeThemeDir('index.ts')
+    const plugin = mounted(engine('probe'), { themeDir: dir })
+    // Resolved the way VitePress resolves `extends`: outermost `setup` wins.
+    expect(await plugin.load(`${dir}/index.ts`)).toContain('inherited(Theme)?.()')
+  })
+
+  it('prefers the entry extension VitePress would resolve to', async () => {
+    const dir = fakeThemeDir('index.js', 'index.ts')
+    const plugin = mounted(engine('probe'), { themeDir: dir })
+    expect(await plugin.load(`${dir}/index.ts`)).toContain('vpm-real')
+    expect(await plugin.load(`${dir}/index.js`)).toBeUndefined()
+  })
+
+  it('falls back to the default theme when the site has no entry of its own', async () => {
+    const plugin = mounted(engine('probe'), { themeDir: fakeThemeDir() })
+    const entry = require_.resolve('vitepress/theme')
+    expect(await plugin.load(entry)).toContain(JSON.stringify(`${entry}?vpm-real`))
+  })
+
+  it('leaves every other module alone', async () => {
+    const dir = fakeThemeDir('index.ts')
+    const plugin = mounted(engine('probe'), { themeDir: dir })
+    await expect(plugin.load(`${dir}/other.ts`)).resolves.toBeUndefined()
+    await expect(plugin.load('/elsewhere/index.ts')).resolves.toBeUndefined()
+  })
+
+  it('does nothing until VitePress has reported a theme directory', async () => {
+    const plugin = mounted(engine('probe'), {})
+    await expect(plugin.load('/anything/index.ts')).resolves.toBeUndefined()
+  })
+})
+
+describe('theme wrapper styles', () => {
+  /** The wrapper the injector generates for a site using the given engine. */
+  async function wrapper(options: ApplyMathOptions): Promise<string> {
+    const dir = fakeThemeDir('index.ts')
+    return (await mounted(options, { themeDir: dir }).load(`${dir}/index.ts`)) ?? ''
+  }
+
+  it('imports the runtime stylesheet and the wrapper styles under MathJax', async () => {
+    const code = await wrapper(engine('mathjax'))
+    expect(code).toContain(`import ${JSON.stringify(MATH_STYLES_ID)}`)
+    expect(code).toMatch(/import "[^"]+\/styles\/core\.css"/)
+  })
+
+  it.each([
+    ['katex', 'katex.css'],
+    ['temml', 'temml.css'],
+    // MathML output either way, so both want the same math-font stack.
+    ['webc', 'temml.css'],
+  ])('imports the %s style entry', async (name, file) => {
+    const code = await wrapper(engine(name))
+    expect(code).toMatch(new RegExp(`import "[^"]+/styles/${file.replace('.', '\\.')}"`))
+    expect(code).not.toContain(MATH_STYLES_ID)
+  })
+
+  it('resolves Temml cross-references, and only under Temml', async () => {
+    expect(await wrapper(engine('temml'))).toContain('useTemmlRefs()')
+    expect(await wrapper(engine('webc'))).not.toContain('useTemmlRefs')
+  })
+
+  it('styles the error placeholders when the engine failed to resolve', async () => {
+    const code = await wrapper({ engine: 'nope' } as unknown as ApplyMathOptions)
+    expect(code).toMatch(/import "[^"]+\/styles\/core\.css"/)
+    expect(code).not.toContain(MATH_STYLES_ID)
+    expect(code).toContain('useCopyTex()')
+  })
+
+  it('keeps the composables but imports nothing under `styles: false`', async () => {
+    const code = await wrapper({ ...engine('katex'), styles: false })
+    expect(code).not.toContain('.css')
+    expect(code).toContain('useCopyTex()')
+  })
+})
+
+describe('withMath', () => {
+  interface ConfigStub {
+    markdown?: { config?: (md: unknown) => unknown }
+    vite?: { plugins?: unknown[] }
+  }
+
+  it('chains the markdown-it plugin onto the config object itself', async () => {
+    const config: ConfigStub = {}
+    withMath(config, engine('probe'))
+    const md = new MarkdownIt()
+    await config.markdown?.config?.(md)
+    expect(md.render('$x$')).toContain('[I:x]')
+  })
+
+  it('registers the same plugins as the factory', () => {
+    const config: ConfigStub = {}
+    withMath(config, engine('probe'))
+    expect(names(config.vite?.plugins?.[0] as { name: string }[])).toEqual([
+      'vitepress-plugin-math:inject',
+      'vitepress-plugin-math:katex-cdn',
+      'vitepress-plugin-math:styles',
+    ])
+  })
+
+  it('leaves the markdown wiring to the config object, never to the site config', () => {
+    const config: ConfigStub = {}
+    withMath(config, engine('probe'))
+    const plugin = (config.vite?.plugins?.[0] as InjectPlugin[])[0] as InjectPlugin
+    const site: SiteStub = {}
+    plugin.configResolved({ vitepress: site })
+    expect(site.markdown).toBeUndefined()
+  })
+
+  it('still wraps the theme, so styles and composables need no wiring either', async () => {
+    const config: ConfigStub = {}
+    withMath(config, engine('katex'))
+    const plugin = (config.vite?.plugins?.[0] as InjectPlugin[])[0] as InjectPlugin
+    const dir = fakeThemeDir('index.ts')
+    plugin.configResolved({ vitepress: { themeDir: dir } })
+    expect(await plugin.load(`${dir}/index.ts`)).toContain('useCopyTex()')
   })
 })
