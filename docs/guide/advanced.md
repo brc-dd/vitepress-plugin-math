@@ -93,13 +93,6 @@ useTemmlRefs() // Temml only — resolves \ref/\eqref equation numbers
 Call them from a wrapping Layout component, not from `enhanceApp` — that runs during the SSR
 build, where touching `document` breaks the build.
 
-::: warning `inject: false` with `math()` also drops the markdown wiring
-`math()` installs the parser rules from the same plugin that does the injecting, so
-`math({ inject: false })` leaves you with the styles and no math parsing. Either wire the
-parser yourself with `applyMath` (below), or use `withMath(config, { inject: false })`,
-which chains the markdown hook onto your config directly and only drops the theme wrapper.
-:::
-
 ## Wiring markdown-it directly
 
 `applyMath` is the parser half on its own: it resolves the engine and installs the rules on

@@ -37,7 +37,8 @@ interface InjectionOptions {
    * Serve the site's theme entry wrapped in a module that imports the
    * engine's stylesheets and starts the client composables (`useCopyTex()`,
    * and `useTemmlRefs()` under Temml) — the whole point of `math()` needing
-   * no theme file. Turn it off to wire those yourself.
+   * no theme file. Turn it off to wire those yourself; the markdown parsing
+   * always stays on.
    * @default true
    */
   inject?: boolean

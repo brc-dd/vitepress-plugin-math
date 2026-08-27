@@ -493,6 +493,9 @@ function mathInjectPlugin(
   skipMarkdown: boolean,
 ): VitePluginObject {
   const styles = options.styles !== false
+  // `inject: false` turns off only the theme wrapping (css + composables);
+  // the markdown wiring below is the parsing itself and always stays on.
+  const wrapTheme = options.inject !== false
   let site: SiteConfigLike | undefined
 
   const plugin = {
@@ -519,10 +522,11 @@ function mathInjectPlugin(
       // The wrapper's import of the real entry, already an absolute path:
       // hand it straight back, so Vite reads the file off disk and runs its
       // own transforms over it.
-      return source.endsWith(REAL_ENTRY_QUERY) ? source : undefined
+      return wrapTheme && source.endsWith(REAL_ENTRY_QUERY) ? source : undefined
     },
 
     async load(id: string) {
+      if (!wrapTheme) return undefined
       // Dev appends its own queries (`?t=…`) to the ids it re-requests, so
       // the marker is matched anywhere in the id, not just at the end.
       if (id.includes(REAL_ENTRY_MARKER)) return undefined
@@ -543,9 +547,7 @@ function mathPlugins(
   renderer: RendererSource,
   skipMarkdown: boolean,
 ): VitePluginObject[] {
-  const styles = mathStylesPlugin(renderer)
-  if (options.inject === false) return styles
-  return [mathInjectPlugin(options, renderer, skipMarkdown), ...styles]
+  return [mathInjectPlugin(options, renderer, skipMarkdown), ...mathStylesPlugin(renderer)]
 }
 
 /**

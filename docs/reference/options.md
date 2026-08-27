@@ -196,11 +196,9 @@ starts the client composables — `useCopyTex()`, plus `useTemmlRefs()` under Te
 what makes `math()` work with no theme file at all. The wrapper re-exports the real theme
 unchanged, follows `extends` chains, and still runs a theme's own `setup()`.
 
-::: warning
-With `math()`, `inject: false` also removes the markdown wiring — the parser rules are
-installed by the same plugin. Use `withMath(config, { inject: false })`, or install the
-rules yourself with `applyMath`. See [manual wiring](/guide/advanced#manual-wiring).
-:::
+Markdown parsing is unaffected — `inject: false` only skips the theme wrapper, so math
+still renders and you wire the styles and composables yourself. See
+[manual wiring](/guide/advanced#manual-wiring).
 
 ### `styles` {#styles}
 

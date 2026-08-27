@@ -347,11 +347,21 @@ describe('math() plugin set', () => {
     ])
   })
 
-  it('drops the injector under `inject: false`', () => {
-    expect(names(math({ ...engine('probe'), inject: false }))).toEqual([
+  it('keeps the injector under `inject: false` — parsing always stays on', async () => {
+    const options = { ...engine('probe'), inject: false }
+    expect(names(math(options))).toEqual([
+      'vitepress-plugin-math:inject',
       'vitepress-plugin-math:katex-cdn',
       'vitepress-plugin-math:styles',
     ])
+    // markdown still gets chained…
+    const dir = fakeThemeDir('index.ts')
+    const site: SiteStub = { themeDir: dir, markdown: {} }
+    const plugin = mounted(options, site)
+    expect(site.markdown?.config).toBeTypeOf('function')
+    // …while the theme wrapper stays off
+    expect(plugin.resolveId(`${dir}/index.ts?vpm-real`)).toBeUndefined()
+    await expect(plugin.load(`${dir}/index.ts`)).resolves.toBeUndefined()
   })
 
   it('orders the injector ahead of VitePress, which reads the config it writes', () => {
