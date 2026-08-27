@@ -1,156 +1,134 @@
 # vitepress-plugin-math
 
-Engine-agnostic math for [VitePress](https://vitepress.dev): one robust markdown-it TeX parser,
-swappable typesetting engines, self-hosted styles and fonts — no CDN anywhere.
+Engine-agnostic math for [VitePress](https://vitepress.dev) — MathJax, KaTeX, Temml, or
+`@webc.site/math` behind one markdown-it parser and a zero-config Vite plugin.
 
-- **Engines as optional peers** — [MathJax v4](https://www.mathjax.org),
-  [KaTeX](https://katex.org), [Temml](https://temml.org),
-  [@webc.site/math](https://www.npmjs.com/package/@webc.site/math), or your own renderer.
-  Auto-detected by priority (mathjax → katex → temml → webc), overridable.
-- **A better TeX parser** than the current ecosystem: inline display math (`a $$x$$ b`),
-  `\( \)` / `\[ \]` delimiters, ` ```math ` fences (with attrs), equation labels, correct
-  currency/escape/table handling, math preserved in image alt text — and unclosed math can
-  never swallow your document.
-- **VitePress-native output**: wrappers carry `v-pre` (Vue-safe) and `data-tex` (copy-as-TeX
-  for every engine), display math is keyboard-scrollable, styles align with the default theme.
-- **Stateless per page**: AMS numbering, `\gdef` macros, and labels reset on every render —
-  no duplicate-label errors under HMR.
+[![npm version](https://img.shields.io/npm/v/vitepress-plugin-math?logo=npm&label=npm)](https://www.npmjs.com/package/vitepress-plugin-math)
+[![CI](https://img.shields.io/github/actions/workflow/status/brc-dd/vitepress-plugin-math/ci.yml?branch=main&logo=github&label=CI)](https://github.com/brc-dd/vitepress-plugin-math/actions/workflows/ci.yml)
+[![docs](https://img.shields.io/badge/docs-brc--dd.github.io-5c73e7)](https://brc-dd.github.io/vitepress-plugin-math/)
+[![license](https://img.shields.io/github/license/brc-dd/vitepress-plugin-math?label=license)](LICENSE)
 
-## Install
+## Quickstart
 
 ```bash
 pnpm add -D vitepress-plugin-math katex
 ```
 
-Swap `katex` for `mathjax`, `temml`, or `@webc.site/math` — install whichever engine(s) you
-want; the first installed one wins (mathjax → katex → temml → webc) unless you pick one
-explicitly.
-
-## Usage
+KaTeX is the recommended engine. Swap it for `mathjax`, `temml`, or `@webc.site/math` — all
+four are optional peer dependencies, and with no `engine` option the first one installed
+wins in the order `mathjax` → `katex` → `temml` → `webc`.
 
 ```ts
 // .vitepress/config.ts
 import { defineConfig } from 'vitepress'
-import { withMath } from 'vitepress-plugin-math/vite'
-
-export default withMath(
-  defineConfig({
-    // your config
-  }),
-  { engine: 'katex' }, // optional — omit for auto-detection
-)
-```
-
-Then import the engine's stylesheet in your theme:
-
-```ts
-// .vitepress/theme/index.ts
-import DefaultTheme from 'vitepress/theme'
-import 'vitepress-plugin-math/styles/katex.css' // katex
-// import 'vitepress-plugin-math/styles/temml.css'     // temml (Latin Modern Math, self-hosted)
-// import 'vitepress-plugin-math/styles/temml-stix2.css' // temml (STIX Two Math)
-// import 'virtual:vitepress-plugin-math.css'          // mathjax (engine-generated, via withMath)
-// import 'vitepress-plugin-math/styles/core.css'      // webc / custom renderers
-
-export default DefaultTheme
-```
-
-Prefer wiring markdown-it yourself? Skip `withMath`:
-
-```ts
-import { defineConfig } from 'vitepress'
-import { applyMath } from 'vitepress-plugin-math'
+import { math } from 'vitepress-plugin-math/vite'
 
 export default defineConfig({
-  markdown: {
-    config: (md) => applyMath(md, { engine: 'temml' }),
-  },
+  vite: { plugins: [math({ engine: 'katex' })] },
 })
 ```
 
-Outside VitePress, use the low-level plugin with any markdown-it and any renderer:
+That is the whole setup. One entry in `vite.plugins` registers the markdown rules, imports
+the engine's stylesheet, serves and emits its fonts from your own deploy, and starts
+copy-as-TeX — no `markdown.config` hook, no theme file, no CSS import. Your own theme is
+left intact: its `setup()` still runs and `extends` chains are followed.
 
-```ts
-import MarkdownIt from 'markdown-it'
-import { mathPlugin } from 'vitepress-plugin-math'
-import { createKatexRenderer } from 'vitepress-plugin-math/engines/katex'
+> **Which VitePress?** `math()` reads VitePress's *resolved* site config, which needs
+> [vuejs/vitepress#5405](https://github.com/vuejs/vitepress/pull/5405). On a VitePress
+> without that fix — `2.0.0-alpha.19` included — use `withMath(config, options)` instead: it
+> chains onto the config object directly and is otherwise identical, same styles, same
+> fonts, same client behavior, still no theme file. See
+> [getting started](https://brc-dd.github.io/vitepress-plugin-math/guide/getting-started#which-vitepress-works-with-math).
 
-const md = MarkdownIt()
-mathPlugin(md, { renderer: await createKatexRenderer(), vPre: false })
-```
-
-## Syntax
+## Syntax at a glance
 
 | Input | Result |
 | --- | --- |
-| `$x+y$`, `\(x+y\)` | inline math |
-| <code>$\`x+y\`$</code> | inline math, GitHub's dollar-backtick form — a code span, so the TeX is protected from markdown processing |
-| `$$ … $$`, `\[ … \]` (own lines) | display math block |
-| `a $$x$$ b`, `a \[x\] b` | display math rendered inline |
-| ` ```math ` fenced block | display math block |
-| `$$x$$ (label)` | display math with a label (`labels: true`) |
-| `\$`, `$5 and $10`, `5$x$` | literal text — never math |
-| `$x\|y$` in tables | escape the pipe: `\|` (a markdown table rule, not ours) |
+| `$x+y$` | inline math |
+| `` $`x+y`$ `` | inline math, GitHub's dollar-backtick form — a real code span, so the TeX is protected from markdown |
+| `\(x+y\)` | inline math |
+| `$$ … $$` / `\[ … \]` on their own lines | display math block, horizontally scrollable and focusable |
+| `a $$x$$ b` / `a \[x\] b` | display math rendered mid-paragraph |
+| ` ```math ` fence | display math block (attributes like ` ```math {1} ` still count) |
+| `$$x$$ (label)` | display math with an `id` anchor, with [`labels: true`](https://brc-dd.github.io/vitepress-plugin-math/reference/options#labels) |
+| `\$`, `$5 and $10`, `cost$5` | literal text — never math |
 
-## Options
+One markdown quirk survives: a table row is split on unescaped pipes before inline parsing
+runs, so a pipe inside math has to be written `\|`. That is a table rule, not a math one —
+inline code spans break the same way.
 
-All options of [`ApplyMathOptions`](src/index.ts) / [`MathOptions`](src/types.ts):
+Everything GitHub renders as math, this renders as math — plus the cases GitHub silently
+drops, such as escapes inside math, math in links and footnotes, and mid-paragraph display
+math. Full details in the
+[syntax guide](https://brc-dd.github.io/vitepress-plugin-math/guide/syntax) and the
+[GitHub compatibility table](https://brc-dd.github.io/vitepress-plugin-math/guide/github-compatibility).
 
-| Option | Default | |
-| --- | --- | --- |
-| `engine` | auto | `'mathjax' \| 'katex' \| 'temml' \| 'webc'` or a custom `MathRenderer` |
-| `delimiters` | `'all'` | `'dollars'`, `'brackets'`, or both |
-| `mathFence` | `true` | treat ` ```math ` fences as display math |
-| `inlineDisplay` | `true` | parse mid-paragraph `$$…$$` as inline display math |
-| `allowInlineWithSpace` | `false` | allow `$ x $` (space-padded delimiters) |
-| `labels` | `false` | parse `$$…$$ (label)` into `ctx.label` |
-| `vPre` | `true` | `v-pre` on wrappers (required for VitePress) |
-| `copySource` | `true` | `data-tex` on wrappers (powers copy-as-TeX) |
-| `throwOnError` | `false` | rethrow engine errors instead of rendering an error placeholder |
-| `transformTex` | — | preprocess TeX before the engine sees it |
-| `mathjax` / `katex` / `temml` / `webc` | — | per-engine options (precise types in `vitepress-plugin-math/engines/*`) |
+## Engines
 
-Custom engines implement [`MathRenderer`](src/types.ts) — `render(tex, ctx)` plus optional
-`reset` / `stylesheet` / `finalize` hooks. Anything that turns TeX into an HTML string works.
+Nothing is bundled and nothing ships JavaScript to the browser — every formula is typeset at
+build time, and the only client code is the ~1 KB copy helper, identical for all four.
 
-## Client extras
+| Engine | Output | Weight | Selection & copy | Notes |
+| --- | --- | --- | --- | --- |
+| [**MathJax v4**](https://brc-dd.github.io/vitepress-plugin-math/guide/engines#mathjax-v4) · [example](https://brc-dd.github.io/vitepress-plugin-math/examples/mathjax/) | SVG (default) or CHTML | ~6 KB CSS, no fonts in SVG mode | assisted (SVG) · native (CHTML) | broadest TeX coverage — mhchem, physics, line-breaking, AMS `\label`/`\ref` |
+| [**KaTeX**](https://brc-dd.github.io/vitepress-plugin-math/guide/engines#katex) · [example](https://brc-dd.github.io/vitepress-plugin-math/examples/katex/) | HTML + hidden MathML | ~25 KB CSS + woff2 from the `katex` package | native | the recommended default: fast, LaTeX-faithful, mhchem built in; `\tag` only, no `\ref` |
+| [**Temml**](https://brc-dd.github.io/vitepress-plugin-math/guide/engines#temml) · [example](https://brc-dd.github.io/vitepress-plugin-math/examples/temml/) | MathML | ~9 KB CSS + one vendored math font | native | smallest markup by far; most extensions built in; CSS-counter numbering |
+| [**@webc.site/math**](https://brc-dd.github.io/vitepress-plugin-math/guide/engines#webc-site-math) · [example](https://brc-dd.github.io/vitepress-plugin-math/examples/webc/) | MathML | ~9 KB CSS, same font | native | minimum payload, thin coverage — no `\binom`, `\color`, physics or mhchem |
 
-SSR-safe Vue composables, called from a wrapping Layout component:
+One honest caveat: **MathJax's default SVG output contains no text**, so the browser has
+nothing to select. Those formulas — and only those — get an assisted layer instead:
+double-click (or long-press) marks the whole formula with a visible highlight so a plain
+copy grabs its TeX, and display math is focusable for a keyboard copy. Every other engine
+keeps its native selection untouched.
 
-```vue
-<!-- .vitepress/theme/Layout.vue -->
-<script setup>
-import DefaultTheme from 'vitepress/theme'
-import { useCopyTex, useTemmlRefs } from 'vitepress-plugin-math/client'
+Bring your own renderer if none of the four fit: anything implementing
+[`MathRenderer`](https://brc-dd.github.io/vitepress-plugin-math/guide/advanced#custom-renderers)
+— `render(tex, ctx)` plus optional `reset` / `stylesheet` / `finalize` hooks — can back the
+parser. The [engines guide](https://brc-dd.github.io/vitepress-plugin-math/guide/engines)
+has the full comparison, including per-engine options.
 
-useCopyTex() // selections containing math copy the original TeX ($…$ / $$…$$)
-useTemmlRefs() // Temml only: resolves \ref/\eqref equation numbers
-</script>
+## Why this one
 
-<template><DefaultTheme.Layout /></template>
-```
+- **Its own parser, not a wrapper.** Mid-paragraph display math, trailing punctuation after
+  a block closer, ` ```math {1} ` fences, image alt text, non-ASCII word boundaries — each a
+  real defect in one or more of the widely used plugins, fixed here and pinned by
+  whitespace-exact fixtures.
+- **An unclosed `$$` can never swallow your page.** A blank line ends the search for a
+  closer, so a typo costs you one paragraph, not the rest of the document.
+- **Stateless per page.** AMS numbering, `\gdef` macros and labels reset on every render, so
+  HMR never leaks equation numbers or raises duplicate-label errors.
+- **Errors that keep the dev server alive.** A formula the engine rejects becomes an inline
+  placeholder carrying the message, and the build continues; a missing engine fails loudly
+  with the package to install, as an overlay in dev and a failed `vitepress build`. Flip
+  either with [`throwOnError`](https://brc-dd.github.io/vitepress-plugin-math/reference/options#throwonerror).
+- **Self-hosted fonts, no CDN.** Stylesheets and webfonts are served and emitted from your
+  own deploy, with licenses and provenance tracked in the repo. The one exception is
+  webcontainers, where VitePress asks for CDN fonts itself.
+- **Copy as TeX, everywhere.** Every wrapper carries `data-tex`, so selecting a formula and
+  copying gives back the source you wrote — on every engine, even for expressions that
+  failed to render.
 
-`useCopyTex` works with every engine (it reads the wrapper's `data-tex`, falling back to
-MathML annotations and MathJax's `data-latex`) — ~1 KB, delegated listeners, no
-re-initialization on navigation. Double-clicking a formula selects it whole (with a
-visible highlight — SVG output gets no native selection paint) so a plain copy grabs its
-TeX; disable via `useCopyTex({ selectOnDblclick: false })`.
+## Links
 
-## Choosing an engine
-
-| | output | payload | notes |
-| --- | --- | --- | --- |
-| **MathJax v4** | SVG (default) or CHTML | no fonts (SVG); ~6 KB CSS | widest TeX coverage, line-breaking, best AT story (assistive MathML on by default) |
-| **KaTeX** | HTML + hidden MathML | ~25 KB CSS + ~260 KB woff2 | fastest look-and-feel parity with LaTeX; fonts self-hosted from the katex package |
-| **Temml** | native MathML | ~9 KB CSS + one math font | smallest markup by far, selectable text; we ship Latin Modern Math / STIX Two woff2 |
-| **@webc.site/math** | native MathML | ~0 | minimum payload; thin TeX coverage, best for simple math |
-
-Fonts are vendored from their canonical upstreams with licenses tracked in
-[`src/fonts/`](src/fonts) and regenerated by [`scripts/fonts.py`](scripts/fonts.py)
-(`uv run scripts/fonts.py`). See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for adapted
-code and test corpora credits.
+- **[Documentation](https://brc-dd.github.io/vitepress-plugin-math/)** — the deep version of
+  everything above.
+- [Options](https://brc-dd.github.io/vitepress-plugin-math/reference/options) ·
+  [API](https://brc-dd.github.io/vitepress-plugin-math/reference/api) ·
+  [Advanced wiring](https://brc-dd.github.io/vitepress-plugin-math/guide/advanced) —
+  `applyMath()` for a plain `markdown.config` hook, `mathPlugin()` for any markdown-it.
+- [Copy and accessibility](https://brc-dd.github.io/vitepress-plugin-math/guide/copy-and-a11y)
+  · [Architecture](https://brc-dd.github.io/vitepress-plugin-math/about/architecture) — how
+  selection, screen readers and the wrapper contract work, and why.
+- Live examples, same pages through each engine:
+  [MathJax](https://brc-dd.github.io/vitepress-plugin-math/examples/mathjax/) ·
+  [KaTeX](https://brc-dd.github.io/vitepress-plugin-math/examples/katex/) ·
+  [Temml](https://brc-dd.github.io/vitepress-plugin-math/examples/temml/) ·
+  [@webc.site/math](https://brc-dd.github.io/vitepress-plugin-math/examples/webc/)
 
 ## License
 
-[MIT](LICENSE) © Divyansh Singh. Vendored fonts keep their own licenses
-(GUST Font License, SIL OFL 1.1) — see [`src/fonts/MANIFEST.md`](src/fonts/MANIFEST.md).
+[MIT](LICENSE) © Divyansh Singh. Vendored fonts keep their own licenses (GUST Font License,
+SIL OFL 1.1) — see [`src/fonts/MANIFEST.md`](src/fonts/MANIFEST.md); they are regenerated
+from their canonical upstreams by [`scripts/fonts.py`](scripts/fonts.py)
+(`uv run scripts/fonts.py`). Adapted code and ported test corpora are credited in
+[ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).

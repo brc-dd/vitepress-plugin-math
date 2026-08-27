@@ -1,9 +1,8 @@
 {
   "name": "vitepress-plugin-math",
   "version": "0.1.0",
-  "description": "Engine-agnostic math for VitePress — one robust markdown-it TeX parser, swappable typesetting engines (MathJax v4, KaTeX, Temml, …), self-hosted styles and fonts.",
+  "description": "Engine-agnostic math for VitePress — MathJax, KaTeX, Temml, or @webc.site/math behind one markdown-it parser and a zero-config Vite plugin",
   "keywords": [
-    "documentation",
     "katex",
     "latex",
     "markdown-it",
@@ -13,9 +12,12 @@
     "mathml",
     "temml",
     "tex",
+    "vite-plugin",
     "vitepress",
     "vitepress-plugin"
   ],
+  "homepage": "https://brc-dd.github.io/vitepress-plugin-math/",
+  "bugs": "https://github.com/brc-dd/vitepress-plugin-math/issues",
   "license": "MIT",
   "author": "Divyansh Singh <brc-dd@hotmail.com> (https://github.com/brc-dd)",
   "repository": {
